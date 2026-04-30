@@ -31,5 +31,9 @@ sms_api.txt
 sms_panel_settings.json
 contacts_import_cache.json
 
+# Personal branding assets (private, do not publish)
+sms_panel/ui/logo.png
+sms_panel/ui/logo.jpg
+
 # Logs
 *.log

@@ -31,6 +31,34 @@ python3 -m sms_panel
 python3 sms_panel_desktop.py
 ```
 
+## اجرای یک کلیکی (ویندوز + لینوکس)
+
+- اسکریپت بوت استرپ پروژه: `run_sms_panel.py`
+- لانچر لینوکس: `run_sms_panel.sh`
+- لانچر ویندوز: `run_sms_panel.bat`
+
+رفتار لانچر:
+1) محیط مجازی `.venv` را از صفر می سازد.
+2) وابستگی ها را نصب می کند.
+3) اگر هر مرحله شکست بخورد، از ابتدا تکرار می کند.
+4) بعد از نصب موفق، فایل `sms_panel_desktop.py` را اجرا می کند.
+
+اجرای سریع:
+
+- لینوکس:
+  ```bash
+  chmod +x run_sms_panel.sh
+  ./run_sms_panel.sh
+  ```
+- ویندوز:
+  - با دوبار کلیک روی `run_sms_panel.bat`
+
+تنظیم تعداد تلاش مجدد (اختیاری):
+
+- متغیر محیطی `SMS_PANEL_BOOTSTRAP_RETRIES`
+- مقدار پیش فرض `3` است.
+- اگر مقدار `0` بگذارید، تلاش ها نامحدود می شود.
+
 ## تنظیمات اولیه
 
 - تنظیمات اصلی در `sms_panel_settings.json` ذخیره می شود.
@@ -45,8 +73,11 @@ python3 sms_panel_desktop.py
   - `sms_api.txt`
   - `sms_panel_settings.json`
   - `contacts_import_cache.json`
+  - `sms_panel/ui/logo.png`
+  - `sms_panel/ui/logo.jpg`
 - این فایل ها در `.gitignore` اضافه شده اند.
 - اگر قبلا کلید واقعی API را در جایی منتشر کرده اید، حتما آن را از پنل `SMS.ir` **Rotate/Revoke** کنید.
+- نبودن فایل لوگو مشکلی برای اجرا ایجاد نمی کند و برنامه بدون آیکون سفارشی اجرا می شود.
 
 ## ساختار پروژه
 
@@ -78,6 +109,9 @@ sms_panel/
       credit_page.py
       settings_page.py
 sms_panel_desktop.py
+run_sms_panel.py
+run_sms_panel.sh
+run_sms_panel.bat
 ```
 
 ## وابستگی ها
