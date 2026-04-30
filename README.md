@@ -21,7 +21,7 @@
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements.txt -i https://mirror-pypi.runflare.com/simple
 python3 -m sms_panel
 ```
 
@@ -39,11 +39,10 @@ python3 sms_panel_desktop.py
 
 رفتار لانچر:
 1) محیط مجازی `.venv` را از صفر می سازد.
-2) وابستگی ها را نصب می کند.
-3) اگر در نصب وابستگی ها خطای اتصال به `PyPI` تشخیص داده شود، یک هشدار نشان می دهد و نصب را با میرور ملی زیر ادامه می دهد:
+2) `pip` و وابستگی ها را فقط از میرور زیر نصب می کند:
    - `https://mirror-pypi.runflare.com/simple`
-4) اگر هر مرحله شکست بخورد، از ابتدا تکرار می کند.
-5) بعد از نصب موفق، فایل `sms_panel_desktop.py` را اجرا می کند.
+3) اگر هر مرحله شکست بخورد، از ابتدا تکرار می کند.
+4) بعد از نصب موفق، فایل `sms_panel_desktop.py` را اجرا می کند.
 
 اجرای سریع:
 

@@ -1,3 +1,5 @@
+--index-url https://mirror-pypi.runflare.com/simple
+
 PyQt6>=6.6
 requests>=2.31
 smsir-python>=1.0.8

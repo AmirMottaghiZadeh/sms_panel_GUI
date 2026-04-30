@@ -16,18 +16,6 @@ RETRY_ENV_VAR = "SMS_PANEL_BOOTSTRAP_RETRIES"
 DEFAULT_RETRY_LIMIT = 3
 RETRY_DELAY_SECONDS = 2
 MIRROR_INDEX_URL = "https://mirror-pypi.runflare.com/simple"
-NETWORK_ERROR_MARKERS = (
-    "could not fetch url",
-    "failed to establish a new connection",
-    "temporary failure in name resolution",
-    "name or service not known",
-    "connection timed out",
-    "read timed out",
-    "connection aborted",
-    "network is unreachable",
-    "proxy error",
-    "remote end closed connection",
-)
 
 
 def retry_limit() -> int:
@@ -47,20 +35,18 @@ def venv_python() -> Path:
     return VENV_DIR / "bin" / "python"
 
 
-def run_command(command: list[str]) -> tuple[bool, str]:
+def run_command(command: list[str], extra_env: dict[str, str] | None = None) -> tuple[bool, str]:
     print(f"[bootstrap] Running: {' '.join(command)}")
-    result = subprocess.run(command, cwd=PROJECT_ROOT, text=True, capture_output=True)
+    env = os.environ.copy()
+    if extra_env:
+        env.update(extra_env)
+    result = subprocess.run(command, cwd=PROJECT_ROOT, text=True, capture_output=True, env=env)
     if result.stdout:
         print(result.stdout, end="")
     if result.stderr:
         print(result.stderr, end="", file=sys.stderr)
     combined_output = f"{result.stdout or ''}\n{result.stderr or ''}"
     return result.returncode == 0, combined_output
-
-
-def has_network_issue(pip_output: str) -> bool:
-    output = pip_output.lower()
-    return any(marker in output for marker in NETWORK_ERROR_MARKERS)
 
 
 def recreate_virtualenv() -> bool:
@@ -71,61 +57,30 @@ def recreate_virtualenv() -> bool:
     return ok
 
 
-def read_packages_from_requirements() -> list[str]:
-    packages: list[str] = []
-    for raw in REQUIREMENTS_FILE.read_text(encoding="utf-8").splitlines():
-        line = raw.strip()
-        if not line or line.startswith("#"):
-            continue
-        if line.startswith("-"):
-            continue
-        packages.append(line)
-    return packages
+def pip_mirror_env() -> dict[str, str]:
+    return {
+        # Disable all pip config files to avoid silently falling back to other indexes.
+        "PIP_CONFIG_FILE": os.devnull,
+        "PIP_INDEX_URL": MIRROR_INDEX_URL,
+    }
 
 
-def install_with_default_index(python_bin: Path) -> tuple[bool, bool]:
-    ok, output = run_command([str(python_bin), "-m", "pip", "install", "--upgrade", "pip"])
-    if not ok:
-        return False, has_network_issue(output)
+def install_dependencies(python_bin: Path) -> bool:
+    mirror_env = pip_mirror_env()
+    print(f"[bootstrap] Installing dependencies only from mirror: {MIRROR_INDEX_URL}")
 
-    ok, output = run_command([str(python_bin), "-m", "pip", "install", "-r", str(REQUIREMENTS_FILE)])
-    if ok:
-        return True, False
-    return False, has_network_issue(output)
-
-
-def install_with_national_mirror(python_bin: Path) -> bool:
-    print(f"[bootstrap] Switching to national mirror: {MIRROR_INDEX_URL}")
     ok, _ = run_command(
-        [str(python_bin), "-m", "pip", "install", "--upgrade", "pip", "-i", MIRROR_INDEX_URL]
+        [str(python_bin), "-m", "pip", "install", "--upgrade", "pip", "-i", MIRROR_INDEX_URL],
+        extra_env=mirror_env,
     )
     if not ok:
         return False
 
-    packages = read_packages_from_requirements()
-    if not packages:
-        ok, _ = run_command(
-            [str(python_bin), "-m", "pip", "install", "-i", MIRROR_INDEX_URL, "-r", str(REQUIREMENTS_FILE)]
-        )
-        return ok
-
-    for package in packages:
-        ok, _ = run_command([str(python_bin), "-m", "pip", "install", "-i", MIRROR_INDEX_URL, package])
-        if not ok:
-            return False
-    return True
-
-
-def install_dependencies(python_bin: Path) -> bool:
-    ok, had_network_issue = install_with_default_index(python_bin)
-    if ok:
-        return True
-
-    if had_network_issue:
-        print("[bootstrap] Warning: Cannot reach the default PyPI server.")
-        return install_with_national_mirror(python_bin)
-
-    return False
+    ok, _ = run_command(
+        [str(python_bin), "-m", "pip", "install", "-r", str(REQUIREMENTS_FILE), "-i", MIRROR_INDEX_URL],
+        extra_env=mirror_env,
+    )
+    return ok
 
 
 def launch_app(python_bin: Path) -> int:

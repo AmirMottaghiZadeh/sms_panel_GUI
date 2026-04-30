@@ -8,7 +8,7 @@ Thanks for your interest in improving this project.
 2. Install dependencies:
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirements.txt -i https://mirror-pypi.runflare.com/simple
 ```
 
 3. Run the app:
