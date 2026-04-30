@@ -65,16 +65,41 @@ def pip_mirror_env() -> dict[str, str]:
     }
 
 
-def install_dependencies(python_bin: Path) -> bool:
+def should_upgrade_pip() -> bool:
+    if not sys.stdin or not sys.stdin.isatty():
+        print("[bootstrap] Non-interactive mode detected. pip upgrade is skipped.")
+        return False
+
+    while True:
+        try:
+            choice = input(
+                "[bootstrap] Do you want to upgrade pip from the mirror before installing dependencies? [y/N]: "
+            )
+        except EOFError:
+            print("\n[bootstrap] No input received. pip upgrade is skipped.")
+            return False
+
+        answer = choice.strip().lower()
+        if answer in {"y", "yes"}:
+            return True
+        if answer in {"", "n", "no"}:
+            return False
+        print("[bootstrap] Please answer with 'y' or 'n'.")
+
+
+def install_dependencies(python_bin: Path, upgrade_pip: bool) -> bool:
     mirror_env = pip_mirror_env()
     print(f"[bootstrap] Installing dependencies only from mirror: {MIRROR_INDEX_URL}")
 
-    ok, _ = run_command(
-        [str(python_bin), "-m", "pip", "install", "--upgrade", "pip", "-i", MIRROR_INDEX_URL],
-        extra_env=mirror_env,
-    )
-    if not ok:
-        return False
+    if upgrade_pip:
+        ok, _ = run_command(
+            [str(python_bin), "-m", "pip", "install", "--upgrade", "pip", "-i", MIRROR_INDEX_URL],
+            extra_env=mirror_env,
+        )
+        if not ok:
+            return False
+    else:
+        print("[bootstrap] Skipping pip upgrade by user choice.")
 
     ok, _ = run_command(
         [str(python_bin), "-m", "pip", "install", "-r", str(REQUIREMENTS_FILE), "-i", MIRROR_INDEX_URL],
@@ -96,6 +121,7 @@ def main() -> int:
         print(f"[bootstrap] Missing file: {ENTRYPOINT_FILE}")
         return 1
 
+    upgrade_pip = should_upgrade_pip()
     limit = retry_limit()
     attempt = 1
 
@@ -104,7 +130,7 @@ def main() -> int:
 
         if recreate_virtualenv():
             python_bin = venv_python()
-            if python_bin.exists() and install_dependencies(python_bin):
+            if python_bin.exists() and install_dependencies(python_bin, upgrade_pip):
                 return launch_app(python_bin)
 
         print("[bootstrap] Setup failed. Restarting from scratch...")
