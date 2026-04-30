@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import hashlib
+import json
 import os
 import shutil
 import subprocess
@@ -16,6 +18,7 @@ RETRY_ENV_VAR = "SMS_PANEL_BOOTSTRAP_RETRIES"
 DEFAULT_RETRY_LIMIT = 3
 RETRY_DELAY_SECONDS = 2
 MIRROR_INDEX_URL = "https://mirror-pypi.runflare.com/simple"
+BOOTSTRAP_STATE_FILE = VENV_DIR / ".bootstrap_state.json"
 
 
 def retry_limit() -> int:
@@ -87,6 +90,56 @@ def should_upgrade_pip() -> bool:
         print("[bootstrap] Please answer with 'y' or 'n'.")
 
 
+def requirements_hash() -> str:
+    digest = hashlib.sha256()
+    digest.update(REQUIREMENTS_FILE.read_bytes())
+    return digest.hexdigest()
+
+
+def expected_bootstrap_state() -> dict[str, str]:
+    return {
+        "requirements_sha256": requirements_hash(),
+        "mirror_index_url": MIRROR_INDEX_URL,
+        "python_version": f"{sys.version_info.major}.{sys.version_info.minor}",
+    }
+
+
+def load_bootstrap_state() -> dict[str, str] | None:
+    if not BOOTSTRAP_STATE_FILE.exists():
+        return None
+    try:
+        data = json.loads(BOOTSTRAP_STATE_FILE.read_text(encoding="utf-8"))
+    except (OSError, ValueError, TypeError):
+        return None
+    if not isinstance(data, dict):
+        return None
+    return {str(key): str(value) for key, value in data.items()}
+
+
+def save_bootstrap_state() -> None:
+    try:
+        BOOTSTRAP_STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
+        BOOTSTRAP_STATE_FILE.write_text(
+            json.dumps(expected_bootstrap_state(), ensure_ascii=True, indent=2),
+            encoding="utf-8",
+        )
+    except OSError as exc:
+        print(f"[bootstrap] Warning: Could not save bootstrap state file: {exc}")
+
+
+def is_bootstrap_ready(python_bin: Path) -> bool:
+    if not VENV_DIR.exists() or not python_bin.exists():
+        return False
+    state = load_bootstrap_state()
+    if not state:
+        return False
+    expected = expected_bootstrap_state()
+    for key, value in expected.items():
+        if state.get(key) != value:
+            return False
+    return True
+
+
 def install_dependencies(python_bin: Path, upgrade_pip: bool) -> bool:
     mirror_env = pip_mirror_env()
     print(f"[bootstrap] Installing dependencies only from mirror: {MIRROR_INDEX_URL}")
@@ -109,8 +162,33 @@ def install_dependencies(python_bin: Path, upgrade_pip: bool) -> bool:
 
 
 def launch_app(python_bin: Path) -> int:
-    print("[bootstrap] Dependencies installed successfully. Launching app...")
-    return subprocess.call([str(python_bin), str(ENTRYPOINT_FILE)], cwd=PROJECT_ROOT)
+    print("[bootstrap] Launching app...")
+    if os.name != "nt":
+        return subprocess.call([str(python_bin), str(ENTRYPOINT_FILE)], cwd=PROJECT_ROOT)
+
+    scripts_dir = python_bin.parent
+    pythonw_bin = scripts_dir / "pythonw.exe"
+    if not pythonw_bin.exists():
+        pythonw_bin = scripts_dir / "venvwlauncher.exe"
+
+    launch_bin = pythonw_bin if pythonw_bin.exists() else python_bin
+    creationflags = 0
+    if launch_bin == python_bin:
+        creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+
+    try:
+        subprocess.Popen(
+            [str(launch_bin), str(ENTRYPOINT_FILE)],
+            cwd=PROJECT_ROOT,
+            close_fds=True,
+            creationflags=creationflags,
+        )
+    except OSError as exc:
+        print(f"[bootstrap] Failed to start app process: {exc}")
+        return 1
+
+    print("[bootstrap] App started. Closing bootstrap console.")
+    return 0
 
 
 def main() -> int:
@@ -120,6 +198,11 @@ def main() -> int:
     if not ENTRYPOINT_FILE.exists():
         print(f"[bootstrap] Missing file: {ENTRYPOINT_FILE}")
         return 1
+
+    python_bin = venv_python()
+    if is_bootstrap_ready(python_bin):
+        print("[bootstrap] Existing environment is ready. Skipping bootstrap steps.")
+        return launch_app(python_bin)
 
     upgrade_pip = should_upgrade_pip()
     limit = retry_limit()
@@ -131,7 +214,10 @@ def main() -> int:
         if recreate_virtualenv():
             python_bin = venv_python()
             if python_bin.exists() and install_dependencies(python_bin, upgrade_pip):
-                return launch_app(python_bin)
+                app_exit_code = launch_app(python_bin)
+                if app_exit_code == 0:
+                    save_bootstrap_state()
+                return app_exit_code
 
         print("[bootstrap] Setup failed. Restarting from scratch...")
         attempt += 1
