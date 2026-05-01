@@ -101,6 +101,26 @@ def normalize_contacts(raw_contacts: Any) -> list[dict[str, str]]:
     return normalized
 
 
+def dedupe_contacts(contacts: list[dict[str, str]]) -> list[dict[str, str]]:
+    deduped: list[dict[str, str]] = []
+    seen: set[str] = set()
+    for item in contacts:
+        mobile = str(item.get("mobile", "")).strip()
+        key = mobile or f"__idx_{len(deduped)}"
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(item)
+    return deduped
+
+
+def mask_mobile(value: str) -> str:
+    text = str(value).strip()
+    if len(text) < 7:
+        return "******" if text else ""
+    return f"{text[:4]}***{text[-3:]}"
+
+
 def _read_csv_content(path: Path) -> tuple[list[str], list[dict[str, Any]]]:
     raw = path.read_bytes()
     tried: list[str] = []

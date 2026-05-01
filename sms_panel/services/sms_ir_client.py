@@ -18,6 +18,7 @@ class SmsIrClient:
     def __init__(self, api_key: str) -> None:
         self.api_key = api_key.strip()
         self.timeout = 25
+        self.retries = 1
         self.sdk = None
         if SmsIrSdk is not None and self.api_key:
             try:
@@ -51,24 +52,33 @@ class SmsIrClient:
         body: dict[str, Any] | None = None,
     ) -> ApiResult:
         url = f"{self.BASE_URL}{path}"
-        try:
-            response = requests.request(
-                method=method,
-                url=url,
-                headers=self._headers(),
-                params=params,
-                json=body,
-                timeout=self.timeout,
-            )
-            return self._parse_response(response)
-        except requests.RequestException as exc:
-            return ApiResult(
-                ok=False,
-                status_code=0,
-                message=str(exc),
-                data=None,
-                raw={"error": str(exc)},
-            )
+        last_error: requests.RequestException | None = None
+        for _attempt in range(self.retries + 1):
+            try:
+                response = requests.request(
+                    method=method,
+                    url=url,
+                    headers=self._headers(),
+                    params=params,
+                    json=body,
+                    timeout=self.timeout,
+                )
+                return self._parse_response(response)
+            except requests.RequestException as exc:
+                last_error = exc
+
+        message = str(last_error) if last_error is not None else "خطای اتصال نامشخص"
+        return ApiResult(
+            ok=False,
+            status_code=0,
+            message=message,
+            data=None,
+            raw={"error": message},
+        )
+
+    def update_network_options(self, timeout_sec: int, retry_count: int) -> None:
+        self.timeout = max(5, min(120, int(timeout_sec)))
+        self.retries = max(0, min(5, int(retry_count)))
 
     @staticmethod
     def _parse_response(response: requests.Response) -> ApiResult:

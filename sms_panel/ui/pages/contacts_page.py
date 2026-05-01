@@ -16,17 +16,25 @@ from PyQt6.QtWidgets import (
 )
 
 from sms_panel.config import PROJECT_ROOT
-from sms_panel.services.contacts import load_contacts_cache, read_contacts_from_file
+from sms_panel.services.contacts import load_contacts_cache, mask_mobile, read_contacts_from_file
 from sms_panel.ui.widgets import CardFrame, PrimaryButton, SecondaryButton
 
 
 class ContactsPage(QWidget):
     contacts_changed = pyqtSignal(list)
 
-    def __init__(self, contacts: list[dict[str, str]]) -> None:
+    def __init__(
+        self,
+        contacts: list[dict[str, str]],
+        *,
+        default_category: str = "عمومی",
+        mask_mobile_numbers: bool = False,
+    ) -> None:
         super().__init__()
         self.contacts = [dict(item) for item in contacts]
         self.filtered_contacts: list[dict[str, str]] = [dict(item) for item in contacts]
+        self.default_category = default_category.strip() or "عمومی"
+        self.mask_mobile_numbers = bool(mask_mobile_numbers)
 
         root = QVBoxLayout(self)
         title = QLabel("لیست مخاطبین")
@@ -156,13 +164,15 @@ class ContactsPage(QWidget):
             parent.setCheckState(0, Qt.CheckState.Unchecked)
 
             for item in entries:
+                raw_mobile = str(item.get("mobile", ""))
                 child = QTreeWidgetItem([
                     "",
                     str(item.get("name", "")),
-                    str(item.get("mobile", "")),
+                    mask_mobile(raw_mobile) if self.mask_mobile_numbers else raw_mobile,
                 ])
                 child.setFlags(child.flags() | Qt.ItemFlag.ItemIsUserCheckable)
                 child.setCheckState(0, Qt.CheckState.Unchecked)
+                child.setData(2, Qt.ItemDataRole.UserRole, raw_mobile)
                 parent.addChild(child)
 
             self.tree.addTopLevelItem(parent)
@@ -201,7 +211,7 @@ class ContactsPage(QWidget):
             QMessageBox.warning(self, "مخاطبین", "شماره موبایل الزامی است.")
             return
 
-        category = self.category_input.text().strip() or "عمومی"
+        category = self.category_input.text().strip() or self.default_category
         self.contacts.append({"name": name, "mobile": mobile, "category": category})
         self.name_input.clear()
         self.mobile_input.clear()
@@ -252,7 +262,8 @@ class ContactsPage(QWidget):
             for child_index in range(parent.childCount()):
                 child = parent.child(child_index)
                 if child.checkState(0) == Qt.CheckState.Checked:
-                    targets.add((child.text(1).strip(), child.text(2).strip(), category))
+                    raw_mobile = str(child.data(2, Qt.ItemDataRole.UserRole) or child.text(2)).strip()
+                    targets.add((child.text(1).strip(), raw_mobile, category))
 
         if not categories_to_delete and not targets:
             QMessageBox.information(self, "مخاطبین", "حداقل یک دسته یا مخاطب را تیک بزنید.")
@@ -324,3 +335,12 @@ class ContactsPage(QWidget):
         else:
             self.filtered_contacts = [dict(item) for item in self.contacts]
             self._populate_tree(self.filtered_contacts)
+
+    def set_default_category(self, category: str) -> None:
+        value = category.strip()
+        if value:
+            self.default_category = value
+
+    def set_mask_mobile_numbers(self, enabled: bool) -> None:
+        self.mask_mobile_numbers = bool(enabled)
+        self._populate_tree(self.filtered_contacts)

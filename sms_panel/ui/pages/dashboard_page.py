@@ -17,6 +17,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from sms_panel.services.contacts import mask_mobile
 from sms_panel.ui.widgets import CardFrame, SecondaryButton
 
 TIME_PATTERNS = (
@@ -130,6 +131,7 @@ class DashboardPage(QWidget):
 
     def __init__(self) -> None:
         super().__init__()
+        self.mask_mobile_numbers = False
         root = QVBoxLayout(self)
         root.setSpacing(12)
 
@@ -266,9 +268,10 @@ class DashboardPage(QWidget):
     def update_sent_rows(self, rows: list[dict[str, Any]]) -> None:
         self.sent_table.setRowCount(min(len(rows), 20))
         for row_index, row in enumerate(rows[:20]):
+            mobile = str(row.get("mobile", row.get("receiver", row.get("phoneNumber", "-"))))
             values = [
                 str(row.get("messageId", row.get("id", "-"))),
-                str(row.get("mobile", row.get("receiver", row.get("phoneNumber", "-")))),
+                mask_mobile(mobile) if self.mask_mobile_numbers else mobile,
                 str(row.get("messageText", row.get("text", row.get("message", "-")))),
                 str(self._pick_value(row, SEND_TIME_KEYS, "-")),
             ]
@@ -278,8 +281,9 @@ class DashboardPage(QWidget):
     def update_received_rows(self, rows: list[dict[str, Any]]) -> None:
         self.recv_table.setRowCount(min(len(rows), 20))
         for row_index, row in enumerate(rows[:20]):
+            mobile = str(row.get("mobile", row.get("sender", row.get("from", "-"))))
             values = [
-                str(row.get("mobile", row.get("sender", row.get("from", "-")))),
+                mask_mobile(mobile) if self.mask_mobile_numbers else mobile,
                 str(row.get("messageText", row.get("text", row.get("message", "-")))),
                 str(self._pick_value(row, RECEIVE_TIME_KEYS, "-")),
             ]
@@ -362,3 +366,6 @@ class DashboardPage(QWidget):
         ]
         valid = [item for item in lengths if item > 0]
         return sum(valid) / len(valid) if valid else 0.0
+
+    def set_mask_mobile_numbers(self, enabled: bool) -> None:
+        self.mask_mobile_numbers = bool(enabled)

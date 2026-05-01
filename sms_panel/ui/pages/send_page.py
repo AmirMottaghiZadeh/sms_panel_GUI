@@ -20,6 +20,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from sms_panel.services.contacts import mask_mobile
 from sms_panel.ui.widgets import PrimaryButton, SecondaryButton
 
 
@@ -37,11 +38,16 @@ class SendPage(QWidget):
         line_number: str,
         drafts: list[dict[str, Any]] | None = None,
         available_lines: list[str] | None = None,
+        *,
+        default_category: str = "عمومی",
+        mask_mobile_numbers: bool = False,
     ) -> None:
         super().__init__()
         self.contacts = [dict(item) for item in contacts]
         self.drafts: list[dict[str, Any]] = [dict(item) for item in (drafts or [])]
         self.available_lines: list[str] = [item.strip() for item in (available_lines or []) if item.strip()]
+        self.default_category = default_category.strip() or "عمومی"
+        self.mask_mobile_numbers = bool(mask_mobile_numbers)
         self.root = QVBoxLayout(self)
 
         title = QLabel("ارسال پیام")
@@ -271,7 +277,8 @@ class SendPage(QWidget):
             for child_index in range(category_item.childCount()):
                 child = category_item.child(child_index)
                 if child.checkState(0) == Qt.CheckState.Checked:
-                    add_mobile(child.text(2))
+                    raw_mobile = str(child.data(2, Qt.ItemDataRole.UserRole) or child.text(2)).strip()
+                    add_mobile(raw_mobile)
 
         self.send_contacts_requested.emit(
             self.contacts_line_combo.currentText().strip(),
@@ -342,7 +349,7 @@ class SendPage(QWidget):
             {
                 "name": name or "بدون نام",
                 "mobile": mobile,
-                "category": self.contact_category.text().strip() or "عمومی",
+                "category": self.contact_category.text().strip() or self.default_category,
             }
         )
         self.contact_name.clear()
@@ -384,13 +391,15 @@ class SendPage(QWidget):
             category_item.setCheckState(0, Qt.CheckState.Unchecked)
 
             for contact in entries:
+                raw_mobile = str(contact.get("mobile", ""))
                 child = QTreeWidgetItem([
                     "",
                     str(contact.get("name", "")),
-                    str(contact.get("mobile", "")),
+                    mask_mobile(raw_mobile) if self.mask_mobile_numbers else raw_mobile,
                 ])
                 child.setFlags(child.flags() | Qt.ItemFlag.ItemIsUserCheckable)
                 child.setCheckState(0, Qt.CheckState.Unchecked)
+                child.setData(2, Qt.ItemDataRole.UserRole, raw_mobile)
                 category_item.addChild(child)
 
             self.contacts_tree.addTopLevelItem(category_item)
@@ -470,3 +479,12 @@ class SendPage(QWidget):
         self._populate_draft_combo(self.single_draft_combo)
         self._populate_draft_combo(self.group_draft_combo)
         self._populate_draft_combo(self.contacts_draft_combo)
+
+    def set_default_category(self, category: str) -> None:
+        value = category.strip()
+        if value:
+            self.default_category = value
+
+    def set_mask_mobile_numbers(self, enabled: bool) -> None:
+        self.mask_mobile_numbers = bool(enabled)
+        self.refresh_contacts_tree()

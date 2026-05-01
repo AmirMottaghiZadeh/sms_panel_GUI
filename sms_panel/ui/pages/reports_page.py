@@ -14,6 +14,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from sms_panel.services.contacts import mask_mobile
 from sms_panel.services.response_parser import extract_items
 from sms_panel.ui.widgets import CardFrame, SecondaryButton
 
@@ -23,6 +24,7 @@ class ReportsPage(QWidget):
 
     def __init__(self) -> None:
         super().__init__()
+        self.mask_mobile_numbers = False
         root = QVBoxLayout(self)
         title = QLabel("گزارش ها")
         title.setProperty("class", "fa-header")
@@ -142,10 +144,22 @@ class ReportsPage(QWidget):
         for row_index, row in enumerate(rows):
             for col_index, col_name in enumerate(columns):
                 value = row.get(col_name, "")
-                self.output_table.setItem(row_index, col_index, QTableWidgetItem(str(value)))
+                text = str(value)
+                if self.mask_mobile_numbers and self._looks_like_mobile_column(col_name):
+                    text = mask_mobile(text)
+                self.output_table.setItem(row_index, col_index, QTableWidgetItem(text))
 
         if columns:
             self.output_table.resizeColumnsToContents()
 
         status_text = "موفق" if ok else "خطا"
         self.meta_label.setText(f"وضعیت: {status_text} | کد: {status_code} | پیام: {message} | ردیف: {len(rows)}")
+
+    @staticmethod
+    def _looks_like_mobile_column(column_name: str) -> bool:
+        key = column_name.strip().lower()
+        tokens = {"mobile", "phone", "receiver", "sender", "from", "to", "number"}
+        return any(token in key for token in tokens)
+
+    def set_mask_mobile_numbers(self, enabled: bool) -> None:
+        self.mask_mobile_numbers = bool(enabled)

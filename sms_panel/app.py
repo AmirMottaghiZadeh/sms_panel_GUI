@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+import traceback
 from typing import Any
 
 from PyQt6.QtCore import Qt
@@ -10,6 +11,7 @@ from PyQt6.QtWidgets import QApplication, QDialog, QInputDialog, QLineEdit
 from sms_panel.config import API_KEY_FILE, APP_ICON_FILE, SETTINGS_FILE
 from sms_panel.services.settings_store import SettingsStore
 from sms_panel.ui.dialogs.api_key_dialog import ApiKeyDialog
+from sms_panel.core.error_handler import ErrorHandler
 from sms_panel.ui.main_window import MainWindow
 
 
@@ -64,6 +66,21 @@ def apply_fusion_style(app: QApplication) -> None:
     app.setStyle("Fusion")
 
 
+def global_exception_handler(exc_type, exc_value, exc_traceback):
+    """مدیریت خطاهای غیرمنتظره در سطح برنامه"""
+    if issubclass(exc_type, KeyboardInterrupt):
+        sys.__excepthook__(exc_type, exc_value, exc_traceback)
+        return
+
+    ErrorHandler.show_error(
+        title="خطای غیرمنتظره",
+        message=f"خطای غیرمنتظره‌ای در برنامه رخ داد:\n{str(exc_value)}",
+        exception=exc_value,
+        context="Global Exception Handler",
+    )
+    sys.__excepthook__(exc_type, exc_value, exc_traceback)
+
+
 def main() -> int:
     app = QApplication(sys.argv)
     if APP_ICON_FILE.exists():
@@ -71,6 +88,9 @@ def main() -> int:
 
     app.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
     apply_fusion_style(app)
+
+    # نصب global exception handler
+    sys.excepthook = global_exception_handler
 
     store = SettingsStore(SETTINGS_FILE)
     settings = store.load()

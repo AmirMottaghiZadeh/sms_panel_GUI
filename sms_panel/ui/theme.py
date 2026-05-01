@@ -291,12 +291,33 @@ def palette_for(theme_name: str, scheme_name: str) -> dict[str, str]:
     return _merge_palette(base, scheme[mode])
 
 
-def build_stylesheet(theme_name: str, scheme_name: str) -> str:
+def build_stylesheet(
+    theme_name: str,
+    scheme_name: str,
+    font_scale: str = "normal",
+    ui_density: str = "comfortable",
+) -> str:
     palette = palette_for(theme_name, scheme_name)
     if scheme_name == "school_navy_gold":
         font_stack = '"IRANSansX", "Vazirmatn", "Shabnam", sans-serif'
     else:
         font_stack = '"Vazirmatn", "IRANSansX", "B Mitra", sans-serif'
+
+    scale_map = {"small": 12, "normal": 13, "large": 14}
+    base_font_size = scale_map.get(font_scale, 13)
+    nav_font_size = base_font_size + 1
+    header_font_size = base_font_size + 11
+    title_font_size = base_font_size + 7
+    subtitle_font_size = base_font_size + 4
+    note_font_size = base_font_size + 1
+
+    compact = ui_density == "compact"
+    group_padding = 9 if compact else 12
+    group_margin_top = 13 if compact else 16
+    group_title_padding = 6 if compact else 8
+    button_padding_vertical = 6 if compact else 8
+    input_padding = 5 if compact else 6
+    input_text_padding = 8 if compact else 10
 
     return f"""
     QMainWindow {{
@@ -305,7 +326,7 @@ def build_stylesheet(theme_name: str, scheme_name: str) -> str:
     QWidget {{
         color: {palette['text']};
         font-family: {font_stack};
-        font-size: 13px;
+        font-size: {base_font_size}px;
         selection-background-color: {palette['selection_bg']};
         selection-color: {palette['selection_text']};
     }}
@@ -314,7 +335,7 @@ def build_stylesheet(theme_name: str, scheme_name: str) -> str:
         color: {palette['text']};
         border: 1px solid {palette['surface3']};
         border-radius: 8px;
-        padding: 6px 8px;
+        padding: {input_padding}px {group_title_padding}px;
     }}
     CardFrame {{
         background: {palette['surface']};
@@ -334,25 +355,25 @@ def build_stylesheet(theme_name: str, scheme_name: str) -> str:
         background: {palette['surface']};
         border: 1px solid {palette['surface3']};
         border-radius: 14px;
-        margin-top: 16px;
-        padding: 12px;
-        padding-top: 18px;
+        margin-top: {group_margin_top}px;
+        padding: {group_padding}px;
+        padding-top: {group_padding + 6}px;
         font-weight: 600;
     }}
     QGroupBox::title {{
         subcontrol-origin: margin;
         right: 14px;
-        padding: 0 8px;
+        padding: 0 {group_title_padding}px;
         color: {palette['muted']};
         background: {palette['surface']};
     }}
     NavButton {{
         text-align: right;
-        padding: 10px 14px;
+        padding: {group_padding}px 14px;
         border-radius: 12px;
         border: 1px solid transparent;
         background: transparent;
-        font-size: 14px;
+        font-size: {nav_font_size}px;
         font-weight: 600;
     }}
     NavButton:hover {{
@@ -369,8 +390,8 @@ def build_stylesheet(theme_name: str, scheme_name: str) -> str:
         color: {palette['accent_text']};
         border: 1px solid {palette['accent_soft']};
         border-radius: 11px;
-        padding: 8px 14px;
-        font-size: 13px;
+        padding: {button_padding_vertical}px 14px;
+        font-size: {base_font_size}px;
         font-weight: 700;
     }}
     PrimaryButton:hover {{
@@ -385,8 +406,8 @@ def build_stylesheet(theme_name: str, scheme_name: str) -> str:
         color: {palette['text']};
         border: 1px solid {palette['input_border']};
         border-radius: 11px;
-        padding: 8px 12px;
-        font-size: 13px;
+        padding: {button_padding_vertical}px 12px;
+        font-size: {base_font_size}px;
         font-weight: 600;
     }}
     SecondaryButton:hover {{
@@ -407,7 +428,7 @@ def build_stylesheet(theme_name: str, scheme_name: str) -> str:
         background: {palette['input_bg']};
         border: 1px solid {palette['input_border']};
         border-radius: 10px;
-        padding: 6px;
+        padding: {input_padding}px;
     }}
     QLineEdit:focus, QPlainTextEdit:focus, QComboBox:focus, QSpinBox:focus, QDateEdit:focus {{
         border: 1px solid {palette['input_focus']};
@@ -425,7 +446,7 @@ def build_stylesheet(theme_name: str, scheme_name: str) -> str:
         outline: 0;
     }}
     QPlainTextEdit {{
-        padding: 10px;
+        padding: {input_text_padding}px;
     }}
     QTableWidget, QTreeWidget {{
         alternate-background-color: {palette['surface2']};
@@ -437,16 +458,16 @@ def build_stylesheet(theme_name: str, scheme_name: str) -> str:
         background: {palette['table_header']};
         color: {palette['text']};
         border: 0;
-        padding: 8px;
+        padding: {group_title_padding}px;
         font-weight: 700;
     }}
     QTabWidget::pane {{
         border-radius: 12px;
-        margin-top: 8px;
+        margin-top: {group_title_padding}px;
     }}
     QTabBar::tab {{
         background: {palette['surface2']};
-        padding: 8px 14px;
+        padding: {button_padding_vertical}px 14px;
         margin-left: 4px;
         border-top-left-radius: 10px;
         border-top-right-radius: 10px;
@@ -496,34 +517,34 @@ def build_stylesheet(theme_name: str, scheme_name: str) -> str:
     }}
     QLabel[class="fa-header"] {{
         font-family: {font_stack};
-        font-size: 24px;
+        font-size: {header_font_size}px;
         font-weight: 800;
     }}
     QLabel[class="fa-title"] {{
         font-family: {font_stack};
-        font-size: 20px;
+        font-size: {title_font_size}px;
         font-weight: 700;
     }}
     QLabel[class="fa-subtitle"] {{
         font-family: {font_stack};
-        font-size: 17px;
+        font-size: {subtitle_font_size}px;
         font-weight: 700;
     }}
     QLabel[class="fa-note"] {{
         font-family: {font_stack};
-        font-size: 14px;
+        font-size: {note_font_size}px;
     }}
     QLabel[class="muted"] {{
         color: {palette['muted']};
     }}
     QLabel[class="kpi-value"] {{
-        font-size: 34px;
+        font-size: {header_font_size + 10}px;
         font-weight: 800;
         color: {palette['kpi']};
     }}
     StatusBadge {{
         border-radius: 11px;
-        padding: 6px 12px;
+        padding: {input_padding}px 12px;
         font-weight: 700;
     }}
     StatusBadge[class="badge-ok"] {{
