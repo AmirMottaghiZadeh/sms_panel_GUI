@@ -1,8 +1,8 @@
 from __future__ import annotations
 from typing import Any, Callable
 
-from PyQt6.QtCore import QThreadPool
-from PyQt6.QtGui import QIcon
+from PyQt6.QtCore import Qt, QThreadPool
+from PyQt6.QtGui import QIcon, QPixmap
 from PyQt6.QtWidgets import (
     QApplication,
     QDialog,
@@ -81,6 +81,7 @@ class MainWindow(QMainWindow):
 
         self.dashboard_page = DashboardPage()
         self.dashboard_page.refresh_requested.connect(self.refresh_dashboard)
+        self.dashboard_page.navigate_requested.connect(self.switch_page)
 
         self.send_page = SendPage(
             contacts=contacts,
@@ -152,7 +153,25 @@ class MainWindow(QMainWindow):
         subtitle.setProperty("class", "muted")
         bar_layout.addWidget(subtitle)
 
+        if APP_ICON_FILE.exists():
+            self.brand_logo_label = QLabel()
+            logo = QPixmap(str(APP_ICON_FILE)).scaled(
+                42,
+                42,
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation,
+            )
+            self.brand_logo_label.setPixmap(logo)
+            self.brand_logo_label.setFixedSize(46, 46)
+            self.brand_logo_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.brand_logo_label.setProperty("class", "brand-logo")
+            bar_layout.addWidget(self.brand_logo_label)
+
         bar_layout.addStretch(1)
+
+        self.route_label = QLabel("داشبورد")
+        self.route_label.setProperty("class", "fa-note")
+        bar_layout.addWidget(self.route_label)
 
         self.status_badge = StatusBadge("در حال بررسی اتصال...")
         self.status_badge.setProperty("class", "badge-wait")
@@ -162,7 +181,7 @@ class MainWindow(QMainWindow):
 
     def _build_sidebar(self) -> QWidget:
         side = CardFrame()
-        side.setFixedWidth(210)
+        side.setFixedWidth(228)
         layout = QVBoxLayout(side)
         layout.setContentsMargins(8, 8, 8, 8)
         layout.setSpacing(6)
@@ -201,6 +220,8 @@ class MainWindow(QMainWindow):
         self.pages.setCurrentIndex(self.page_order.index(route))
         for key, button in self.nav_buttons.items():
             button.setChecked(key == route)
+            if key == route:
+                self.route_label.setText(button.text())
 
     def run_async(self, fn: Callable[[], Any], done: Callable[[Any, Exception | None], None]) -> None:
         worker = ApiWorker(fn)
@@ -310,8 +331,8 @@ class MainWindow(QMainWindow):
 
         def task() -> dict[str, ApiResult]:
             return {
-                "sent": self.client.report_today(page_size=25, page_number=1),
-                "recv": self.client.report_today_received(page_size=25, page_number=1),
+                "sent": self.client.report_today(page_size=120, page_number=1),
+                "recv": self.client.report_today_received(page_size=120, page_number=1),
             }
 
         def done(result: dict[str, ApiResult] | None, error: Exception | None) -> None:
@@ -328,7 +349,9 @@ class MainWindow(QMainWindow):
                 contacts_count=len(self.settings.get("contacts", [])),
                 drafts_count=len(self.settings.get("drafts", [])),
             )
-            self.dashboard_page.update_sent_rows(sent_data[:20])
+            self.dashboard_page.update_sent_rows(sent_data)
+            self.dashboard_page.update_received_rows(recv_data)
+            self.dashboard_page.update_analytics(sent_data, recv_data)
 
             if result["sent"].ok and result["recv"].ok:
                 self.set_status("داشبورد آماده است", "badge-ok")

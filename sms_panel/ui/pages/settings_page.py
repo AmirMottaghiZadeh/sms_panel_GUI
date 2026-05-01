@@ -39,6 +39,7 @@ class SettingsPage(QWidget):
         self.scheme_combo.addItem("قهوه ای + خردلی", "brown_mustard")
         self.scheme_combo.addItem("نارنجی + مشکی", "orange_black")
         self.scheme_combo.addItem("بژ + گرادیانت قرمز", "beige_red_gradient")
+        self.scheme_combo.addItem("مدرسه ای (سرمه ای + طلایی)", "school_navy_gold")
         self._set_scheme_value(color_scheme)
         self.scheme_combo.currentIndexChanged.connect(self._emit_scheme_change)
         scheme_row.addWidget(self.scheme_combo)
