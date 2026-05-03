@@ -7,7 +7,6 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
-    QSpinBox,
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
@@ -16,7 +15,8 @@ from PyQt6.QtWidgets import (
 
 from sms_panel.services.contacts import mask_mobile
 from sms_panel.services.response_parser import extract_items
-from sms_panel.ui.widgets import CardFrame, SecondaryButton
+from sms_panel.ui.jalali_calendar import JalaliDateField
+from sms_panel.ui.widgets import CardFrame, NumericLineEdit, SecondaryButton, autosize_table_columns
 
 
 class ReportsPage(QWidget):
@@ -50,10 +50,8 @@ class ReportsPage(QWidget):
         row_b.addWidget(pack_button)
 
         row_c = QHBoxLayout()
-        self.from_date = QLineEdit()
-        self.from_date.setPlaceholderText("fromDate: yyyy-mm-dd")
-        self.to_date = QLineEdit()
-        self.to_date.setPlaceholderText("toDate: yyyy-mm-dd")
+        self.from_date = JalaliDateField(placeholder_text="از تاریخ (هجری شمسی)")
+        self.to_date = JalaliDateField(placeholder_text="تا تاریخ (هجری شمسی)")
         archived_send_btn = SecondaryButton("آرشیو ارسالی")
         archived_send_btn.clicked.connect(self._emit_archived_send)
         archived_recv_btn = SecondaryButton("آرشیو دریافتی")
@@ -68,11 +66,11 @@ class ReportsPage(QWidget):
         live_send_btn.clicked.connect(lambda: self.report_request.emit("today_send", {}))
         live_recv_btn = SecondaryButton("گزارش دریافتی امروز")
         live_recv_btn.clicked.connect(lambda: self.report_request.emit("today_recv", {}))
-        latest_count = QSpinBox()
-        latest_count.setRange(1, 100)
-        latest_count.setValue(20)
+        latest_count = NumericLineEdit(1, 100)
+        latest_count.set_numeric_value(20)
+        latest_count.setPlaceholderText("تعداد")
         latest_btn = SecondaryButton("آخرین دریافتی")
-        latest_btn.clicked.connect(lambda: self.report_request.emit("latest_recv", {"count": latest_count.value()}))
+        latest_btn.clicked.connect(lambda: self.report_request.emit("latest_recv", {"count": latest_count.numeric_value(20)}))
         row_d.addWidget(live_send_btn)
         row_d.addWidget(live_recv_btn)
         row_d.addWidget(latest_count)
@@ -97,13 +95,23 @@ class ReportsPage(QWidget):
     def _emit_archived_send(self) -> None:
         self.report_request.emit(
             "archived_send",
-            {"from_date": self.from_date.text().strip(), "to_date": self.to_date.text().strip()},
+            {
+                "from_date": self.from_date.gregorian_iso(),
+                "to_date": self.to_date.gregorian_iso(),
+                "from_date_jalali": self.from_date.jalali_text(),
+                "to_date_jalali": self.to_date.jalali_text(),
+            },
         )
 
     def _emit_archived_recv(self) -> None:
         self.report_request.emit(
             "archived_recv",
-            {"from_date": self.from_date.text().strip(), "to_date": self.to_date.text().strip()},
+            {
+                "from_date": self.from_date.gregorian_iso(),
+                "to_date": self.to_date.gregorian_iso(),
+                "from_date_jalali": self.from_date.jalali_text(),
+                "to_date_jalali": self.to_date.jalali_text(),
+            },
         )
 
     @staticmethod
@@ -150,7 +158,7 @@ class ReportsPage(QWidget):
                 self.output_table.setItem(row_index, col_index, QTableWidgetItem(text))
 
         if columns:
-            self.output_table.resizeColumnsToContents()
+            autosize_table_columns(self.output_table, max_width=460)
 
         status_text = "موفق" if ok else "خطا"
         self.meta_label.setText(f"وضعیت: {status_text} | کد: {status_code} | پیام: {message} | ردیف: {len(rows)}")

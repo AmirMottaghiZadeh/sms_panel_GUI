@@ -6,7 +6,6 @@ from typing import Any
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import (
     QHBoxLayout,
-    QHeaderView,
     QLabel,
     QLineEdit,
     QMessageBox,
@@ -18,6 +17,7 @@ from PyQt6.QtWidgets import (
 )
 
 from sms_panel.ui.widgets import CardFrame, PrimaryButton, SecondaryButton
+from sms_panel.ui.widgets import autosize_table_columns
 
 
 class DraftsPage(QWidget):
@@ -47,7 +47,7 @@ class DraftsPage(QWidget):
         self.title_input.setPlaceholderText("عنوان پیش نویس")
         self.message_input = QPlainTextEdit()
         self.message_input.setPlaceholderText("متن پیش نویس")
-        self.message_input.setMaximumHeight(150)
+        self.message_input.setMinimumHeight(170)
 
         buttons_row = QHBoxLayout()
         save_button = PrimaryButton("افزودن پیش نویس")
@@ -81,9 +81,6 @@ class DraftsPage(QWidget):
         table_layout = QVBoxLayout(table_card)
         self.table = QTableWidget(0, 3)
         self.table.setHorizontalHeaderLabels(["عنوان", "متن", "زمان ثبت"])
-        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
-        self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
-        self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
         self.table.verticalHeader().setVisible(False)
         self.table.setAlternatingRowColors(True)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
@@ -197,6 +194,7 @@ class DraftsPage(QWidget):
             self.table.setItem(row, 0, QTableWidgetItem(str(item.get("title", ""))))
             self.table.setItem(row, 1, QTableWidgetItem(str(item.get("message", ""))))
             self.table.setItem(row, 2, QTableWidgetItem(str(item.get("saved_at", ""))))
+        autosize_table_columns(self.table, stretch_columns=(1,), max_width=480)
 
     def set_drafts(self, drafts: list[dict[str, Any]]) -> None:
         self.drafts = [dict(item) for item in drafts]

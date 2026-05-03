@@ -318,6 +318,8 @@ def build_stylesheet(
     button_padding_vertical = 6 if compact else 8
     input_padding = 5 if compact else 6
     input_text_padding = 8 if compact else 10
+    input_min_height = 36 if compact else 40
+    textarea_min_height = 128 if compact else 152
 
     return f"""
     QMainWindow {{
@@ -362,10 +364,14 @@ def build_stylesheet(
     }}
     QGroupBox::title {{
         subcontrol-origin: margin;
-        right: 14px;
+        right: 18px;
         padding: 0 {group_title_padding}px;
         color: {palette['muted']};
         background: {palette['surface']};
+    }}
+    QGroupBox#contactsManagerBox::title,
+    QGroupBox#sendContactsBox::title {{
+        right: 24px;
     }}
     NavButton {{
         text-align: right;
@@ -430,12 +436,21 @@ def build_stylesheet(
         border-radius: 10px;
         padding: {input_padding}px;
     }}
+    QLineEdit, QComboBox, QSpinBox, QDateEdit {{
+        min-height: {input_min_height}px;
+    }}
+    QLineEdit:hover, QPlainTextEdit:hover, QComboBox:hover, QSpinBox:hover, QDateEdit:hover {{
+        border: 1px solid {palette['accent_soft']};
+    }}
     QLineEdit:focus, QPlainTextEdit:focus, QComboBox:focus, QSpinBox:focus, QDateEdit:focus {{
         border: 1px solid {palette['input_focus']};
     }}
     QComboBox::drop-down {{
-        width: 24px;
+        width: 28px;
         border: 0;
+    }}
+    QComboBox:on {{
+        border: 1px solid {palette['input_focus']};
     }}
     QComboBox QAbstractItemView {{
         background: {palette['surface']};
@@ -444,9 +459,18 @@ def build_stylesheet(
         selection-background-color: {palette['selection_bg']};
         selection-color: {palette['selection_text']};
         outline: 0;
+        padding: 4px;
+    }}
+    QComboBox QAbstractItemView::item {{
+        min-height: {input_min_height - 4}px;
+        padding: 4px 8px;
+    }}
+    QComboBox QAbstractItemView::item:hover {{
+        background: {palette['surface2']};
     }}
     QPlainTextEdit {{
         padding: {input_text_padding}px;
+        min-height: {textarea_min_height}px;
     }}
     QTableWidget, QTreeWidget {{
         alternate-background-color: {palette['surface2']};

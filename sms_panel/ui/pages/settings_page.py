@@ -2,10 +2,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import (
     QCheckBox,
-    QComboBox,
     QFileDialog,
     QFrame,
     QFormLayout,
@@ -13,13 +12,12 @@ from PyQt6.QtWidgets import (
     QLabel,
     QLineEdit,
     QScrollArea,
-    QSpinBox,
     QVBoxLayout,
     QWidget,
 )
 
 from sms_panel.config import PROJECT_ROOT
-from sms_panel.ui.widgets import CardFrame, PrimaryButton, SecondaryButton
+from sms_panel.ui.widgets import CardFrame, NumericLineEdit, PrimaryButton, SecondaryButton, SelectComboBox
 
 
 class SettingsPage(QWidget):
@@ -47,6 +45,7 @@ class SettingsPage(QWidget):
         self.scroll = QScrollArea()
         self.scroll.setWidgetResizable(True)
         self.scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self.scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         root.addWidget(self.scroll, 1)
 
         content = QWidget()
@@ -84,6 +83,28 @@ class SettingsPage(QWidget):
 
         self.content_layout.addWidget(card)
         return card, layout
+
+    def _build_numeric_input_with_unit(
+        self,
+        min_value: int,
+        max_value: int,
+        unit_text: str,
+        *,
+        placeholder: str = "",
+    ) -> tuple[NumericLineEdit, QWidget]:
+        field = NumericLineEdit(min_value=min_value, max_value=max_value)
+        if placeholder:
+            field.setPlaceholderText(placeholder)
+
+        row_widget = QWidget()
+        row = QHBoxLayout(row_widget)
+        row.setContentsMargins(0, 0, 0, 0)
+        row.setSpacing(8)
+        unit_label = QLabel(unit_text)
+        unit_label.setProperty("class", "fa-note")
+        row.addWidget(field, 1)
+        row.addWidget(unit_label)
+        return field, row_widget
 
     def _build_identity_section(self) -> None:
         _, layout = self._section_card(
@@ -123,19 +144,24 @@ class SettingsPage(QWidget):
         )
 
         form = QFormLayout()
-        self.api_timeout_spin = QSpinBox()
-        self.api_timeout_spin.setRange(5, 120)
-        self.api_timeout_spin.setSuffix(" ثانیه")
-
-        self.api_retry_spin = QSpinBox()
-        self.api_retry_spin.setRange(0, 5)
-        self.api_retry_spin.setSuffix(" بار")
+        self.api_timeout_input, api_timeout_widget = self._build_numeric_input_with_unit(
+            5,
+            120,
+            "ثانیه",
+            placeholder="مثال: 25",
+        )
+        self.api_retry_input, api_retry_widget = self._build_numeric_input_with_unit(
+            0,
+            5,
+            "بار",
+            placeholder="مثال: 1",
+        )
 
         self.last_api_success_label = QLabel("-")
         self.last_api_success_label.setProperty("class", "fa-note")
 
-        form.addRow("Timeout", self.api_timeout_spin)
-        form.addRow("Retry", self.api_retry_spin)
+        form.addRow("Timeout", api_timeout_widget)
+        form.addRow("Retry", api_retry_widget)
         form.addRow("آخرین اتصال موفق", self.last_api_success_label)
         layout.addLayout(form)
 
@@ -165,14 +191,17 @@ class SettingsPage(QWidget):
         self.signature_input.setPlaceholderText("مثال: دبیرستان دارالفنون")
 
         self.bulk_confirm_enabled_check = QCheckBox("قبل از ارسال انبوه تایید بگیر")
-        self.bulk_confirm_threshold_spin = QSpinBox()
-        self.bulk_confirm_threshold_spin.setRange(1, 100000)
-        self.bulk_confirm_threshold_spin.setSuffix(" مخاطب")
+        self.bulk_confirm_threshold_input, bulk_threshold_widget = self._build_numeric_input_with_unit(
+            1,
+            100000,
+            "مخاطب",
+            placeholder="مثال: 50",
+        )
 
         form.addRow("Line Number پیش فرض", self.line_input)
         form.addRow("امضای انتهای پیام", self.signature_input)
         form.addRow("سیاست تایید", self.bulk_confirm_enabled_check)
-        form.addRow("حد آستانه تایید", self.bulk_confirm_threshold_spin)
+        form.addRow("حد آستانه تایید", bulk_threshold_widget)
         layout.addLayout(form)
 
         save_btn = PrimaryButton("ذخیره پیش فرض های ارسال")
@@ -219,13 +248,16 @@ class SettingsPage(QWidget):
         form = QFormLayout()
         self.contacts_default_category_input = QLineEdit()
         self.dedupe_contacts_check = QCheckBox("شماره تکراری خودکار حذف شود")
-        self.max_drafts_spin = QSpinBox()
-        self.max_drafts_spin.setRange(10, 1000)
-        self.max_drafts_spin.setSuffix(" پیش نویس")
+        self.max_drafts_input, max_drafts_widget = self._build_numeric_input_with_unit(
+            10,
+            1000,
+            "پیش نویس",
+            placeholder="مثال: 100",
+        )
 
         form.addRow("دسته بندی پیش فرض مخاطبین", self.contacts_default_category_input)
         form.addRow("پاکسازی تکراری", self.dedupe_contacts_check)
-        form.addRow("حداکثر پیش نویس", self.max_drafts_spin)
+        form.addRow("حداکثر پیش نویس", max_drafts_widget)
         layout.addLayout(form)
 
         save_btn = PrimaryButton("ذخیره تنظیمات مخاطبین/پیش نویس")
@@ -260,23 +292,23 @@ class SettingsPage(QWidget):
 
         form = QFormLayout()
 
-        self.theme_combo = QComboBox()
+        self.theme_combo = SelectComboBox()
         self.theme_combo.addItem("روشن", "light")
         self.theme_combo.addItem("تیره", "dark")
 
-        self.scheme_combo = QComboBox()
+        self.scheme_combo = SelectComboBox()
         self.scheme_combo.addItem("هلویی - بادمجانی", "peach_eggplant")
         self.scheme_combo.addItem("قهوه ای - خردلی", "brown_mustard")
         self.scheme_combo.addItem("نارنجی - مشکی", "orange_black")
         self.scheme_combo.addItem("بژ - قرمز گرادیانت", "beige_red_gradient")
         self.scheme_combo.addItem("سرمه ای - طلایی", "school_navy_gold")
 
-        self.font_scale_combo = QComboBox()
+        self.font_scale_combo = SelectComboBox()
         self.font_scale_combo.addItem("کوچک", "small")
         self.font_scale_combo.addItem("نرمال", "normal")
         self.font_scale_combo.addItem("بزرگ", "large")
 
-        self.ui_density_combo = QComboBox()
+        self.ui_density_combo = SelectComboBox()
         self.ui_density_combo.addItem("فشرده", "compact")
         self.ui_density_combo.addItem("راحت", "comfortable")
 
@@ -297,10 +329,10 @@ class SettingsPage(QWidget):
             "قفل برنامه، ماسک شماره ها و تایید دو مرحله ای برای عملیات حساس.",
         )
 
-        self.app_lock_check = QCheckBox("قفل برنامه با PIN فعال باشد")
+        self.app_lock_check = QCheckBox("قفل برنامه با گذرواژه فعال باشد")
         self.mask_numbers_check = QCheckBox("شماره ها در جداول ماسک شوند")
         self.sensitive_confirm_check = QCheckBox("برای عملیات حساس تایید اضافه گرفته شود")
-        self.pin_status_label = QLabel("وضعیت PIN: تعریف نشده")
+        self.pin_status_label = QLabel("وضعیت گذرواژه: تعریف نشده")
         self.pin_status_label.setProperty("class", "fa-note")
 
         layout.addWidget(self.app_lock_check)
@@ -309,9 +341,9 @@ class SettingsPage(QWidget):
         layout.addWidget(self.pin_status_label)
 
         pin_row = QHBoxLayout()
-        set_pin_btn = SecondaryButton("تنظیم/تغییر PIN")
+        set_pin_btn = SecondaryButton("تنظیم/تغییر گذرواژه")
         set_pin_btn.clicked.connect(self.set_pin_requested.emit)
-        clear_pin_btn = SecondaryButton("حذف PIN")
+        clear_pin_btn = SecondaryButton("حذف گذرواژه")
         clear_pin_btn.clicked.connect(self.clear_pin_requested.emit)
         save_btn = PrimaryButton("ذخیره تنظیمات امنیت")
         save_btn.clicked.connect(self._save_security)
@@ -329,7 +361,7 @@ class SettingsPage(QWidget):
         )
 
         form = QFormLayout()
-        self.log_level_combo = QComboBox()
+        self.log_level_combo = SelectComboBox()
         self.log_level_combo.addItems(["DEBUG", "INFO", "WARNING", "ERROR"])
         self.log_file_path_input = QLineEdit()
         self.log_file_path_input.setPlaceholderText("مثال: /home/user/sms_panel.log")
@@ -382,10 +414,10 @@ class SettingsPage(QWidget):
         self._set_line_text(self.line_input, settings.get("line_number", ""))
         self._set_line_text(self.signature_input, settings.get("message_signature", ""))
         self.bulk_confirm_enabled_check.setChecked(bool(settings.get("bulk_confirm_enabled", True)))
-        self.bulk_confirm_threshold_spin.setValue(self._safe_int(settings.get("bulk_confirm_threshold"), 50))
+        self._set_numeric_value(self.bulk_confirm_threshold_input, settings.get("bulk_confirm_threshold"), 50)
 
-        self.api_timeout_spin.setValue(self._safe_int(settings.get("api_timeout_sec"), 25))
-        self.api_retry_spin.setValue(self._safe_int(settings.get("api_retry_count"), 1))
+        self._set_numeric_value(self.api_timeout_input, settings.get("api_timeout_sec"), 25)
+        self._set_numeric_value(self.api_retry_input, settings.get("api_retry_count"), 1)
         last_ok = str(settings.get("last_api_success_at", "")).strip() or "ثبت نشده"
         self.last_api_success_label.setText(last_ok)
 
@@ -394,7 +426,7 @@ class SettingsPage(QWidget):
             settings.get("contacts_default_category", "عمومی"),
         )
         self.dedupe_contacts_check.setChecked(bool(settings.get("dedupe_contacts_on_save", True)))
-        self.max_drafts_spin.setValue(self._safe_int(settings.get("max_drafts"), 100))
+        self._set_numeric_value(self.max_drafts_input, settings.get("max_drafts"), 100)
 
         self.notify_success_check.setChecked(bool(settings.get("notify_on_success", True)))
         self.notify_error_check.setChecked(bool(settings.get("notify_on_error", True)))
@@ -406,7 +438,9 @@ class SettingsPage(QWidget):
         self.sensitive_confirm_check.setChecked(bool(settings.get("require_sensitive_action_confirmation", True)))
 
         pin_hash = str(settings.get("app_pin_hash", "")).strip()
-        self.pin_status_label.setText("وضعیت PIN: تنظیم شده" if pin_hash else "وضعیت PIN: تعریف نشده")
+        self.pin_status_label.setText(
+            "وضعیت گذرواژه: تنظیم شده" if pin_hash else "وضعیت گذرواژه: تعریف نشده"
+        )
 
         self._set_combo_text(self.log_level_combo, str(settings.get("log_level", "INFO")).upper())
         self._set_line_text(self.log_file_path_input, settings.get("log_file_path", ""))
@@ -439,8 +473,8 @@ class SettingsPage(QWidget):
     def _save_api(self) -> None:
         self.settings_patch_requested.emit(
             {
-                "api_timeout_sec": self.api_timeout_spin.value(),
-                "api_retry_count": self.api_retry_spin.value(),
+                "api_timeout_sec": self.api_timeout_input.numeric_value(25),
+                "api_retry_count": self.api_retry_input.numeric_value(1),
             }
         )
 
@@ -450,7 +484,7 @@ class SettingsPage(QWidget):
                 "line_number": self.line_input.text().strip(),
                 "message_signature": self.signature_input.text().strip(),
                 "bulk_confirm_enabled": self.bulk_confirm_enabled_check.isChecked(),
-                "bulk_confirm_threshold": self.bulk_confirm_threshold_spin.value(),
+                "bulk_confirm_threshold": self.bulk_confirm_threshold_input.numeric_value(50),
             }
         )
 
@@ -459,7 +493,7 @@ class SettingsPage(QWidget):
             {
                 "contacts_default_category": self.contacts_default_category_input.text().strip() or "عمومی",
                 "dedupe_contacts_on_save": self.dedupe_contacts_check.isChecked(),
-                "max_drafts": self.max_drafts_spin.value(),
+                "max_drafts": self.max_drafts_input.numeric_value(100),
             }
         )
 
@@ -507,17 +541,23 @@ class SettingsPage(QWidget):
         widget.blockSignals(False)
 
     @staticmethod
-    def _set_combo_data(widget: QComboBox, value: str) -> None:
+    def _set_combo_data(widget: SelectComboBox, value: str) -> None:
         index = widget.findData(value)
         widget.blockSignals(True)
         widget.setCurrentIndex(index if index >= 0 else 0)
         widget.blockSignals(False)
 
     @staticmethod
-    def _set_combo_text(widget: QComboBox, value: str) -> None:
+    def _set_combo_text(widget: SelectComboBox, value: str) -> None:
         index = widget.findText(value)
         widget.blockSignals(True)
         widget.setCurrentIndex(index if index >= 0 else 0)
+        widget.blockSignals(False)
+
+    @staticmethod
+    def _set_numeric_value(widget: NumericLineEdit, value: Any, default: int) -> None:
+        widget.blockSignals(True)
+        widget.set_numeric_value(SettingsPage._safe_int(value, default))
         widget.blockSignals(False)
 
     @staticmethod

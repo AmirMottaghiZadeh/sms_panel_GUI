@@ -12,7 +12,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from sms_panel.ui.widgets import CardFrame, SecondaryButton
+from sms_panel.ui.widgets import CardFrame, SecondaryButton, autosize_table_columns
 
 
 class CreditPage(QWidget):
@@ -41,7 +41,6 @@ class CreditPage(QWidget):
 
         self.lines_table = QTableWidget(0, 1)
         self.lines_table.setHorizontalHeaderLabels(["شماره خطوط ارسال"])
-        self.lines_table.horizontalHeader().setStretchLastSection(True)
         self.lines_table.verticalHeader().setVisible(False)
         self.lines_table.setAlternatingRowColors(True)
         self.lines_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
@@ -57,3 +56,4 @@ class CreditPage(QWidget):
         self.lines_table.setRowCount(len(lines))
         for row, line in enumerate(lines):
             self.lines_table.setItem(row, 0, QTableWidgetItem(str(line)))
+        autosize_table_columns(self.lines_table, stretch_columns=(0,), min_width=180, max_width=520)

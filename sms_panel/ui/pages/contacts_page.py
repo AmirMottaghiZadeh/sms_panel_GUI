@@ -3,8 +3,8 @@ from __future__ import annotations
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import (
     QFileDialog,
-    QComboBox,
     QHBoxLayout,
+    QHeaderView,
     QLabel,
     QLineEdit,
     QMessageBox,
@@ -17,7 +17,7 @@ from PyQt6.QtWidgets import (
 
 from sms_panel.config import PROJECT_ROOT
 from sms_panel.services.contacts import load_contacts_cache, mask_mobile, read_contacts_from_file
-from sms_panel.ui.widgets import CardFrame, PrimaryButton, SecondaryButton
+from sms_panel.ui.widgets import CardFrame, PrimaryButton, SecondaryButton, SelectComboBox
 
 
 class ContactsPage(QWidget):
@@ -85,7 +85,7 @@ class ContactsPage(QWidget):
         action_layout.addLayout(tools_row)
 
         selection_row = QHBoxLayout()
-        self.category_combo = QComboBox()
+        self.category_combo = SelectComboBox()
         select_category_btn = SecondaryButton("انتخاب دسته")
         select_category_btn.clicked.connect(self._select_category)
         unselect_category_btn = SecondaryButton("لغو انتخاب دسته")
@@ -126,6 +126,9 @@ class ContactsPage(QWidget):
         self.tree.setColumnCount(3)
         self.tree.setHeaderLabels(["انتخاب/دسته بندی", "نام", "شماره"])
         self.tree.setAlternatingRowColors(True)
+        self.tree.header().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
+        self.tree.header().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        self.tree.header().setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
         tree_layout.addWidget(self.tree)
         root.addWidget(tree_frame, 1)
 
@@ -178,6 +181,8 @@ class ContactsPage(QWidget):
             self.tree.addTopLevelItem(parent)
 
         self.tree.expandAll()
+        self.tree.resizeColumnToContents(0)
+        self.tree.resizeColumnToContents(2)
 
     def _set_all_categories_state(self, state: Qt.CheckState) -> None:
         for index in range(self.tree.topLevelItemCount()):

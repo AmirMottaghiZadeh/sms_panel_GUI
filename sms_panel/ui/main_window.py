@@ -2,7 +2,7 @@ from __future__ import annotations
 import hashlib
 import json
 import platform
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Callable
 
@@ -11,6 +11,7 @@ from PyQt6.QtGui import QIcon, QPixmap
 from PyQt6.QtWidgets import (
     QApplication,
     QDialog,
+    QFrame,
     QFileDialog,
     QHBoxLayout,
     QInputDialog,
@@ -18,6 +19,7 @@ from PyQt6.QtWidgets import (
     QLineEdit,
     QMainWindow,
     QMessageBox,
+    QScrollArea,
     QSizePolicy,
     QStackedWidget,
     QVBoxLayout,
@@ -150,6 +152,15 @@ class MainWindow(QMainWindow):
         self.settings_page.copy_diagnostics_requested.connect(self.copy_diagnostic_info)
 
         self.page_order = ["dashboard", "send", "drafts", "contacts", "reports", "credit", "settings"]
+        self.page_wrappers = {
+            "dashboard": self._wrap_page(self.dashboard_page),
+            "send": self._wrap_page(self.send_page),
+            "drafts": self._wrap_page(self.drafts_page),
+            "contacts": self._wrap_page(self.contacts_page),
+            "reports": self._wrap_page(self.reports_page),
+            "credit": self._wrap_page(self.credit_page),
+            "settings": self.settings_page,
+        }
         self.page_map = {
             "dashboard": self.dashboard_page,
             "send": self.send_page,
@@ -161,13 +172,22 @@ class MainWindow(QMainWindow):
         }
 
         for key in self.page_order:
-            self.pages.addWidget(self.page_map[key])
+            self.pages.addWidget(self.page_wrappers[key])
 
         body.addWidget(self.pages, 1)
         root_layout.addLayout(body, 1)
         self.setCentralWidget(root)
 
         self.switch_page("dashboard")
+
+    @staticmethod
+    def _wrap_page(page: QWidget) -> QScrollArea:
+        area = QScrollArea()
+        area.setWidgetResizable(True)
+        area.setFrameShape(QFrame.Shape.NoFrame)
+        area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        area.setWidget(page)
+        return area
 
     def _build_top_bar(self) -> QWidget:
         bar = CardFrame()
@@ -202,7 +222,9 @@ class MainWindow(QMainWindow):
 
     def _build_sidebar(self) -> QWidget:
         side = CardFrame()
-        side.setFixedWidth(228)
+        side.setMinimumWidth(198)
+        side.setMaximumWidth(240)
+        side.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
         layout = QVBoxLayout(side)
         layout.setContentsMargins(8, 8, 8, 8)
         layout.setSpacing(6)
@@ -371,11 +393,21 @@ class MainWindow(QMainWindow):
     def refresh_dashboard(self) -> None:
         ErrorHandler.log_info("Refreshing dashboard data")
         self.set_status("در حال بارگذاری داشبورد...", "badge-wait")
+        today = datetime.now().date()
+        week_start = today - timedelta(days=6)
+        from_date = week_start.strftime("%Y-%m-%d")
+        to_date = today.strftime("%Y-%m-%d")
 
         def task() -> dict[str, ApiResult]:
             return {
                 "sent": self.client.report_today(page_size=120, page_number=1),
                 "recv": self.client.report_today_received(page_size=120, page_number=1),
+                "sent_week": self.client.report_archived(
+                    from_date=from_date,
+                    to_date=to_date,
+                    page_size=500,
+                    page_number=1,
+                ),
             }
 
         def done(result: dict[str, ApiResult] | None, error: Exception | None) -> None:
@@ -386,6 +418,7 @@ class MainWindow(QMainWindow):
 
             sent_data = extract_items(result["sent"].data)
             recv_data = extract_items(result["recv"].data)
+            weekly_data = extract_items(result["sent_week"].data)
 
             self.dashboard_page.update_cards(
                 sent_count=len(sent_data),
@@ -395,7 +428,11 @@ class MainWindow(QMainWindow):
             )
             self.dashboard_page.update_sent_rows(sent_data)
             self.dashboard_page.update_received_rows(recv_data)
-            self.dashboard_page.update_analytics(sent_data, recv_data)
+            self.dashboard_page.update_analytics(
+                sent_data,
+                recv_data,
+                weekly_sent_rows=weekly_data if weekly_data else sent_data,
+            )
 
             if result["sent"].ok and result["recv"].ok:
                 self.set_status("داشبورد آماده است", "badge-ok")
@@ -633,7 +670,7 @@ class MainWindow(QMainWindow):
             QMessageBox.information(
                 self,
                 "امنیت",
-                "برای فعال شدن قفل برنامه باید ابتدا PIN تنظیم شود.",
+                "برای فعال شدن قفل برنامه باید ابتدا گذرواژه تنظیم شود.",
             )
             self.settings["app_lock_enabled"] = False
 
@@ -720,14 +757,14 @@ class MainWindow(QMainWindow):
             pin, ok = QInputDialog.getText(
                 self,
                 "تایید عملیات حساس",
-                f"برای ادامه عملیات «{action_name}» PIN را وارد کنید:",
+                f"برای ادامه عملیات «{action_name}» گذرواژه را وارد کنید:",
                 QLineEdit.EchoMode.Password,
             )
             if not ok:
                 return False
             is_valid = self._hash_pin(pin) == pin_hash
             if not is_valid:
-                QMessageBox.warning(self, "تایید عملیات", "PIN وارد شده نادرست است.")
+                QMessageBox.warning(self, "تایید عملیات", "گذرواژه وارد شده نادرست است.")
             return is_valid
 
         answer = QMessageBox.question(
@@ -751,7 +788,7 @@ class MainWindow(QMainWindow):
             pin, ok = QInputDialog.getText(
                 self,
                 "قفل برنامه",
-                f"PIN را وارد کنید (تلاش {attempt + 1} از 3):",
+                f"گذرواژه را وارد کنید (تلاش {attempt + 1} از 3):",
                 QLineEdit.EchoMode.Password,
             )
             if not ok:
@@ -759,7 +796,7 @@ class MainWindow(QMainWindow):
             if self._hash_pin(pin) == pin_hash:
                 return
 
-        QMessageBox.critical(self, "قفل برنامه", "PIN اشتباه است. برنامه بسته می شود.")
+        QMessageBox.critical(self, "قفل برنامه", "گذرواژه اشتباه است. برنامه بسته می شود.")
         raise SystemExit(0)
 
     @staticmethod
@@ -767,52 +804,52 @@ class MainWindow(QMainWindow):
         return hashlib.sha256(pin.strip().encode("utf-8")).hexdigest()
 
     def set_or_change_pin(self) -> None:
-        if str(self.settings.get("app_pin_hash", "")).strip() and not self._confirm_sensitive_action("تغییر PIN"):
+        if str(self.settings.get("app_pin_hash", "")).strip() and not self._confirm_sensitive_action("تغییر گذرواژه"):
             return
 
         new_pin, ok = QInputDialog.getText(
             self,
-            "تنظیم PIN",
-            "PIN جدید را وارد کنید (حداقل 4 رقم):",
+            "تنظیم گذرواژه",
+            "گذرواژه جدید را وارد کنید (حداقل 4 رقم):",
             QLineEdit.EchoMode.Password,
         )
         if not ok:
             return
         new_pin = new_pin.strip()
         if len(new_pin) < 4 or not new_pin.isdigit():
-            QMessageBox.warning(self, "PIN", "PIN باید حداقل 4 رقم و فقط عدد باشد.")
+            QMessageBox.warning(self, "گذرواژه", "گذرواژه باید حداقل 4 رقم و فقط عدد باشد.")
             return
 
         confirm_pin, ok = QInputDialog.getText(
             self,
-            "تایید PIN",
-            "PIN را مجددا وارد کنید:",
+            "تایید گذرواژه",
+            "گذرواژه را مجددا وارد کنید:",
             QLineEdit.EchoMode.Password,
         )
         if not ok:
             return
         if confirm_pin.strip() != new_pin:
-            QMessageBox.warning(self, "PIN", "PIN تایید با مقدار جدید یکسان نیست.")
+            QMessageBox.warning(self, "گذرواژه", "گذرواژه تایید با مقدار جدید یکسان نیست.")
             return
 
         self.settings["app_pin_hash"] = self._hash_pin(new_pin)
         self.settings["app_lock_enabled"] = True
         self.persist_settings()
         self.settings_page.refresh_values(self.settings)
-        self._notify_success("PIN", "PIN با موفقیت تنظیم شد.")
+        self._notify_success("گذرواژه", "گذرواژه با موفقیت تنظیم شد.")
 
     def clear_pin(self) -> None:
         if not str(self.settings.get("app_pin_hash", "")).strip():
-            QMessageBox.information(self, "PIN", "PIN فعالی وجود ندارد.")
+            QMessageBox.information(self, "گذرواژه", "گذرواژه فعالی وجود ندارد.")
             return
-        if not self._confirm_sensitive_action("حذف PIN"):
+        if not self._confirm_sensitive_action("حذف گذرواژه"):
             return
 
         self.settings["app_pin_hash"] = ""
         self.settings["app_lock_enabled"] = False
         self.persist_settings()
         self.settings_page.refresh_values(self.settings)
-        self._notify_success("PIN", "PIN حذف شد.")
+        self._notify_success("گذرواژه", "گذرواژه حذف شد.")
 
     def export_settings_to_json(self, include_api_key: bool) -> None:
         file_name, _ = QFileDialog.getSaveFileName(
