@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from PyQt6.QtCore import pyqtSignal
@@ -21,6 +22,38 @@ from sms_panel.ui.widgets import CardFrame, NumericLineEdit, SecondaryButton, au
 
 class ReportsPage(QWidget):
     report_request = pyqtSignal(str, dict)
+    DELIVERY_STATE_COLUMN_TOKENS = ("delivery", "deliverystate", "deliverystatus", "deliveryresult")
+    DELIVERY_STATE_CODE_MAP = {
+        -1: "نامشخص",
+        0: "در صف ارسال",
+        1: "ارسال شده",
+        2: "تحویل شده",
+        3: "ناموفق",
+        4: "منقضی شده",
+        5: "رد شده",
+        6: "در لیست سیاه",
+        7: "شماره نامعتبر",
+        8: "مسدود شده",
+        9: "لغو شده",
+    }
+    DELIVERY_STATE_TEXT_MAP = {
+        "delivered": "تحویل شده",
+        "sent": "ارسال شده",
+        "submitted": "ارسال شده",
+        "accepted": "پذیرفته شده",
+        "queued": "در صف ارسال",
+        "pending": "در انتظار ارسال",
+        "failed": "ناموفق",
+        "undelivered": "تحویل نشده",
+        "notdelivered": "تحویل نشده",
+        "rejected": "رد شده",
+        "blocked": "مسدود شده",
+        "blacklist": "در لیست سیاه",
+        "expired": "منقضی شده",
+        "canceled": "لغو شده",
+        "cancelled": "لغو شده",
+        "unknown": "نامشخص",
+    }
 
     def __init__(self) -> None:
         super().__init__()
@@ -153,6 +186,8 @@ class ReportsPage(QWidget):
             for col_index, col_name in enumerate(columns):
                 value = row.get(col_name, "")
                 text = str(value)
+                if self._looks_like_delivery_state_column(col_name):
+                    text = self._format_delivery_state(text)
                 if self.mask_mobile_numbers and self._looks_like_mobile_column(col_name):
                     text = mask_mobile(text)
                 self.output_table.setItem(row_index, col_index, QTableWidgetItem(text))
@@ -168,6 +203,32 @@ class ReportsPage(QWidget):
         key = column_name.strip().lower()
         tokens = {"mobile", "phone", "receiver", "sender", "from", "to", "number"}
         return any(token in key for token in tokens)
+
+    @classmethod
+    def _looks_like_delivery_state_column(cls, column_name: str) -> bool:
+        key = re.sub(r"[^a-z0-9]+", "", column_name.strip().lower())
+        return any(token in key for token in cls.DELIVERY_STATE_COLUMN_TOKENS)
+
+    @classmethod
+    def _format_delivery_state(cls, raw_value: str) -> str:
+        source = raw_value.strip()
+        if not source:
+            return source
+
+        normalized = source.lower().replace("_", "").replace("-", "").replace(" ", "")
+        if normalized in cls.DELIVERY_STATE_TEXT_MAP:
+            label = cls.DELIVERY_STATE_TEXT_MAP[normalized]
+            return label if source == label else f"{label} ({source})"
+
+        try:
+            code = int(float(source))
+        except ValueError:
+            return source
+
+        label = cls.DELIVERY_STATE_CODE_MAP.get(code)
+        if label is None:
+            return f"وضعیت نامشخص (کد {code})"
+        return f"{label} (کد {code})"
 
     def set_mask_mobile_numbers(self, enabled: bool) -> None:
         self.mask_mobile_numbers = bool(enabled)

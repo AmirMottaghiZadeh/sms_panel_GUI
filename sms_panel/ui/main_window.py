@@ -394,7 +394,8 @@ class MainWindow(QMainWindow):
         ErrorHandler.log_info("Refreshing dashboard data")
         self.set_status("در حال بارگذاری داشبورد...", "badge-wait")
         today = datetime.now().date()
-        week_start = today - timedelta(days=6)
+        # هفته جاری را با شروع شنبه محاسبه می کنیم.
+        week_start = today - timedelta(days=(today.weekday() + 2) % 7)
         from_date = week_start.strftime("%Y-%m-%d")
         to_date = today.strftime("%Y-%m-%d")
 

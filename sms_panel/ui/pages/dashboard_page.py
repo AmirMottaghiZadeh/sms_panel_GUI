@@ -174,7 +174,7 @@ class DashboardPage(QWidget):
 
         chart_card = CardFrame()
         chart_layout = QVBoxLayout(chart_card)
-        chart_title = QLabel("نمودار میله ای ارسال هفتگی")
+        chart_title = QLabel("نمودار روزانه ارسالی هفته جاری")
         chart_title.setProperty("class", "fa-subtitle")
         chart_layout.addWidget(chart_title)
 
@@ -182,7 +182,7 @@ class DashboardPage(QWidget):
         legend_row.addWidget(self._legend_dot("#B63B24", "ارسالی"))
         legend_row.addWidget(self._legend_dot("#4A274F", "بیشترین روز"))
         legend_row.addStretch(1)
-        self.chart_note = QLabel("توزیع پیام های ارسالی در روزهای هفته")
+        self.chart_note = QLabel("تعداد پیام های ارسالی برای هر روز هفته")
         self.chart_note.setProperty("class", "muted")
         legend_row.addWidget(self.chart_note)
         chart_layout.addLayout(legend_row)
@@ -350,6 +350,16 @@ class DashboardPage(QWidget):
         text = str(value).strip()
         if not text:
             return None
+
+        # برخی خروجی های API زمان را به صورت unix timestamp برمی گردانند.
+        if re.fullmatch(r"\d{10,13}", text):
+            try:
+                raw_value = int(text)
+                if len(text) == 13:
+                    raw_value //= 1000
+                return datetime.fromtimestamp(raw_value)
+            except (ValueError, OSError):
+                return None
 
         normalized = text.replace("Z", "+00:00")
         try:

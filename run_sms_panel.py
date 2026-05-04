@@ -19,6 +19,7 @@ DEFAULT_RETRY_LIMIT = 3
 RETRY_DELAY_SECONDS = 2
 MIRROR_INDEX_URL = "https://mirror-pypi.runflare.com/simple"
 BOOTSTRAP_STATE_FILE = VENV_DIR / ".bootstrap_state.json"
+READY_CHECK_FLAG = "--is-bootstrap-ready"
 
 
 def retry_limit() -> int:
@@ -39,17 +40,34 @@ def venv_python() -> Path:
 
 
 def run_command(command: list[str], extra_env: dict[str, str] | None = None) -> tuple[bool, str]:
-    print(f"[bootstrap] Running: {' '.join(command)}")
+    print(f"[bootstrap] Running: {' '.join(command)}", flush=True)
     env = os.environ.copy()
     if extra_env:
         env.update(extra_env)
-    result = subprocess.run(command, cwd=PROJECT_ROOT, text=True, capture_output=True, env=env)
-    if result.stdout:
-        print(result.stdout, end="")
-    if result.stderr:
-        print(result.stderr, end="", file=sys.stderr)
-    combined_output = f"{result.stdout or ''}\n{result.stderr or ''}"
-    return result.returncode == 0, combined_output
+    try:
+        process = subprocess.Popen(
+            command,
+            cwd=PROJECT_ROOT,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            env=env,
+            bufsize=1,
+        )
+    except OSError as exc:
+        message = f"[bootstrap] Failed to start command: {exc}\n"
+        print(message, end="", file=sys.stderr, flush=True)
+        return False, message
+
+    output_lines: list[str] = []
+    assert process.stdout is not None
+    for line in process.stdout:
+        output_lines.append(line)
+        print(line, end="", flush=True)
+
+    return_code = process.wait()
+    combined_output = "".join(output_lines)
+    return return_code == 0, combined_output
 
 
 def recreate_virtualenv() -> bool:
@@ -200,6 +218,9 @@ def main() -> int:
         return 1
 
     python_bin = venv_python()
+    if READY_CHECK_FLAG in sys.argv[1:]:
+        return 0 if is_bootstrap_ready(python_bin) else 1
+
     if is_bootstrap_ready(python_bin):
         print("[bootstrap] Existing environment is ready. Skipping bootstrap steps.")
         return launch_app(python_bin)
