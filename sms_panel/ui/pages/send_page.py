@@ -18,7 +18,7 @@ from PyQt6.QtWidgets import (
 )
 
 from sms_panel.services.contacts import mask_mobile
-from sms_panel.ui.widgets import PrimaryButton, SecondaryButton, SelectComboBox
+from sms_panel.ui.widgets import PrimaryButton, SecondaryButton, SelectComboBox, SmsCharCounter
 
 
 class SendPage(QWidget):
@@ -100,6 +100,7 @@ class SendPage(QWidget):
         form_layout.addWidget(self.single_mobile)
         form_layout.addWidget(self._field_label("متن پیام"))
         form_layout.addWidget(self.single_message)
+        form_layout.addWidget(SmsCharCounter(self.single_message))
         form_layout.addWidget(self._field_label("انتخاب پیش نویس"))
         form_layout.addWidget(self.single_draft_combo)
         form_layout.addWidget(send)
@@ -137,6 +138,7 @@ class SendPage(QWidget):
         form_layout.addWidget(self.group_mobiles)
         form_layout.addWidget(self._field_label("متن پیام"))
         form_layout.addWidget(self.group_message)
+        form_layout.addWidget(SmsCharCounter(self.group_message))
         form_layout.addWidget(self._field_label("انتخاب پیش نویس"))
         form_layout.addWidget(self.group_draft_combo)
         form_layout.addWidget(send)
@@ -168,27 +170,32 @@ class SendPage(QWidget):
         search_row.addWidget(reset_search_button)
         manager_layout.addLayout(search_row)
 
-        controls_row = QHBoxLayout()
         self.category_combo = SelectComboBox()
-        self.category_combo.setMinimumWidth(260)
+        self.category_combo.setMinimumWidth(220)
         self.category_combo.setPlaceholderText("انتخاب دسته")
 
         select_category_btn = SecondaryButton("انتخاب دسته")
         select_category_btn.clicked.connect(self._select_category)
-        unselect_category_btn = SecondaryButton("لغو انتخاب دسته")
+        unselect_category_btn = SecondaryButton("لغو انتخاب")
         unselect_category_btn.clicked.connect(self._unselect_category)
-        select_all_btn = SecondaryButton("انتخاب همه دسته ها")
+
+        controls_row1 = QHBoxLayout()
+        controls_row1.addWidget(self._field_label("دسته بندی"))
+        controls_row1.addWidget(self.category_combo, 1)
+        controls_row1.addWidget(select_category_btn)
+        controls_row1.addWidget(unselect_category_btn)
+        manager_layout.addLayout(controls_row1)
+
+        select_all_btn = SecondaryButton("انتخاب همه")
         select_all_btn.clicked.connect(lambda: self._set_all_categories_state(Qt.CheckState.Checked))
         clear_btn = SecondaryButton("پاکسازی انتخاب")
         clear_btn.clicked.connect(lambda: self._set_all_categories_state(Qt.CheckState.Unchecked))
 
-        controls_row.addWidget(self._field_label("انتخاب دسته"))
-        controls_row.addWidget(self.category_combo)
-        controls_row.addWidget(select_category_btn)
-        controls_row.addWidget(unselect_category_btn)
-        controls_row.addWidget(select_all_btn)
-        controls_row.addWidget(clear_btn)
-        manager_layout.addLayout(controls_row)
+        controls_row2 = QHBoxLayout()
+        controls_row2.addWidget(select_all_btn)
+        controls_row2.addWidget(clear_btn)
+        controls_row2.addStretch(1)
+        manager_layout.addLayout(controls_row2)
 
         self.contacts_tree = QTreeWidget()
         self.contacts_tree.setColumnCount(3)
@@ -220,6 +227,7 @@ class SendPage(QWidget):
         send_layout.addWidget(self.contacts_line_combo)
         send_layout.addWidget(self._field_label("متن پیام"))
         send_layout.addWidget(self.contacts_message)
+        send_layout.addWidget(SmsCharCounter(self.contacts_message))
         send_layout.addWidget(self._field_label("انتخاب پیش نویس"))
         send_layout.addWidget(self.contacts_draft_combo)
         send_layout.addWidget(send_button)

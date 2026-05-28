@@ -17,7 +17,7 @@ from PyQt6.QtWidgets import (
 )
 
 from sms_panel.services.contacts import mask_mobile
-from sms_panel.ui.widgets import CardFrame, SecondaryButton, autosize_table_columns
+from sms_panel.ui.widgets import ClickableCardFrame, SecondaryButton, autosize_table_columns
 
 TIME_PATTERNS = (
     "%Y-%m-%d %H:%M:%S",
@@ -31,17 +31,24 @@ TIME_PATTERNS = (
 
 SEND_TIME_KEYS = ("sendDateTime", "sendDate", "dateTime", "createdAt", "createDate")
 RECEIVE_TIME_KEYS = ("receivedDateTime", "receiveDateTime", "receiveDate", "dateTime", "createdAt")
-WEEKDAY_LABELS = ["شنبه", "یکشنبه", "دوشنبه", "سه شنبه", "چهارشنبه", "پنجشنبه", "جمعه"]
+WEEKDAY_LABELS = ["شنبه", "یکشنبه", "دوشنبه", "سه‌شنبه", "چهارشنبه", "پنجشنبه", "جمعه"]
 
 
 class WeeklySentBarChart(QWidget):
     def __init__(self) -> None:
         super().__init__()
         self.day_counts: list[int] = [0] * 7
+        self._bar_color_hex: str = ""
+        self._peak_color_hex: str = ""
         self.setMinimumHeight(230)
 
     def set_counts(self, counts: list[int]) -> None:
         self.day_counts = (counts + [0] * 7)[:7]
+        self.update()
+
+    def set_chart_colors(self, bar_color: str, peak_color: str) -> None:
+        self._bar_color_hex = bar_color
+        self._peak_color_hex = peak_color
         self.update()
 
     def paintEvent(self, event: Any) -> None:  # noqa: ANN401
@@ -54,8 +61,16 @@ class WeeklySentBarChart(QWidget):
 
         grid_color = QColor(255, 255, 255, 58) if is_dark else QColor(25, 15, 32, 50)
         label_color = QColor(255, 255, 255, 150) if is_dark else QColor(50, 35, 58, 140)
-        bar_color = QColor("#F07C58") if is_dark else QColor("#B63B24")
-        peak_color = QColor("#F4C95D") if is_dark else QColor("#4A274F")
+
+        if self._bar_color_hex:
+            bar_color = QColor(self._bar_color_hex)
+        else:
+            bar_color = QColor("#F07C58") if is_dark else QColor("#B63B24")
+
+        if self._peak_color_hex:
+            peak_color = QColor(self._peak_color_hex)
+        else:
+            peak_color = QColor("#F4C95D") if is_dark else QColor("#4A274F")
 
         outer = QRectF(self.rect()).adjusted(14, 12, -14, -12)
         plot_rect = outer.adjusted(44, 18, -16, -40)
@@ -136,7 +151,7 @@ class DashboardPage(QWidget):
         top_row.addWidget(self.refresh_button)
         root.addLayout(top_row)
 
-        quick_actions = CardFrame()
+        quick_actions = ClickableCardFrame()
         quick_layout = QVBoxLayout(quick_actions)
         quick_title = QLabel("دسترسی سریع")
         quick_title.setProperty("class", "fa-subtitle")
@@ -158,12 +173,12 @@ class DashboardPage(QWidget):
         cards = QGridLayout()
         cards.setHorizontalSpacing(12)
         cards.setVerticalSpacing(12)
-        self.sent_card = self._make_card("پیام های ارسالی امروز")
-        self.received_card = self._make_card("پیام های دریافتی امروز")
-        self.contacts_card = self._make_card("تعداد مخاطبین")
-        self.drafts_card = self._make_card("پیش نویس ها")
-        self.unique_card = self._make_card("گیرنده یکتا در امروز")
-        self.interaction_card = self._make_card("درصد موفقیت ارسال امروز")
+        self.sent_card = self._make_card("پیام های ارسالی امروز", "reports")
+        self.received_card = self._make_card("پیام های دریافتی امروز", "reports")
+        self.contacts_card = self._make_card("تعداد مخاطبین", "contacts")
+        self.drafts_card = self._make_card("پیش نویس ها", "drafts")
+        self.unique_card = self._make_card("گیرنده یکتا در امروز", "reports")
+        self.interaction_card = self._make_card("درصد موفقیت ارسال امروز", "reports")
         cards.addWidget(self.sent_card[0], 0, 0)
         cards.addWidget(self.received_card[0], 0, 1)
         cards.addWidget(self.contacts_card[0], 0, 2)
@@ -172,15 +187,19 @@ class DashboardPage(QWidget):
         cards.addWidget(self.interaction_card[0], 1, 2)
         root.addLayout(cards)
 
-        chart_card = CardFrame()
+        chart_card = ClickableCardFrame()
         chart_layout = QVBoxLayout(chart_card)
         chart_title = QLabel("نمودار روزانه ارسالی هفته جاری")
         chart_title.setProperty("class", "fa-subtitle")
         chart_layout.addWidget(chart_title)
 
         legend_row = QHBoxLayout()
-        legend_row.addWidget(self._legend_dot("#B63B24", "ارسالی"))
-        legend_row.addWidget(self._legend_dot("#4A274F", "بیشترین روز"))
+        self._legend_sent = QLabel("● ارسالی")
+        self._legend_sent.setProperty("class", "fa-note")
+        self._legend_peak = QLabel("● بیشترین روز")
+        self._legend_peak.setProperty("class", "fa-note")
+        legend_row.addWidget(self._legend_sent)
+        legend_row.addWidget(self._legend_peak)
         legend_row.addStretch(1)
         self.chart_note = QLabel("تعداد پیام های ارسالی برای هر روز هفته")
         self.chart_note.setProperty("class", "muted")
@@ -194,7 +213,7 @@ class DashboardPage(QWidget):
         tables_row = QHBoxLayout()
         tables_row.setSpacing(12)
 
-        self.sent_box = CardFrame()
+        self.sent_box = ClickableCardFrame()
         sent_layout = QVBoxLayout(self.sent_box)
         sent_title = QLabel("آخرین پیام های ارسالی")
         sent_title.setProperty("class", "fa-subtitle")
@@ -208,7 +227,13 @@ class DashboardPage(QWidget):
         self.sent_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         sent_layout.addWidget(self.sent_table)
 
-        self.recv_box = CardFrame()
+        self.sent_empty_label = QLabel("هنوز پیامی ارسال نشده")
+        self.sent_empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.sent_empty_label.setProperty("class", "empty-state")
+        self.sent_empty_label.hide()
+        sent_layout.addWidget(self.sent_empty_label)
+
+        self.recv_box = ClickableCardFrame()
         recv_layout = QVBoxLayout(self.recv_box)
         recv_title = QLabel("آخرین پیام های دریافتی")
         recv_title.setProperty("class", "fa-subtitle")
@@ -222,18 +247,18 @@ class DashboardPage(QWidget):
         self.recv_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         recv_layout.addWidget(self.recv_table)
 
+        self.recv_empty_label = QLabel("هنوز پیامی دریافت نشده")
+        self.recv_empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.recv_empty_label.setProperty("class", "empty-state")
+        self.recv_empty_label.hide()
+        recv_layout.addWidget(self.recv_empty_label)
+
         tables_row.addWidget(self.sent_box, 2)
         tables_row.addWidget(self.recv_box, 1)
         root.addLayout(tables_row, 1)
 
-    @staticmethod
-    def _legend_dot(color: str, text: str) -> QLabel:
-        label = QLabel(f"● {text}")
-        label.setStyleSheet(f"color: {color}; font-weight: 700;")
-        return label
-
-    def _make_card(self, title: str) -> tuple[CardFrame, QLabel]:
-        frame = CardFrame()
+    def _make_card(self, title: str, nav_route: str = "") -> tuple[ClickableCardFrame, QLabel]:
+        frame = ClickableCardFrame()
         frame.setProperty("class", "kpi-card")
         layout = QVBoxLayout(frame)
         title_label = QLabel(title)
@@ -243,7 +268,14 @@ class DashboardPage(QWidget):
         value.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         layout.addWidget(title_label)
         layout.addWidget(value)
+        if nav_route:
+            frame.clicked.connect(lambda route=nav_route: self.navigate_requested.emit(route))
         return frame, value
+
+    def update_chart_palette(self, palette: dict[str, str]) -> None:
+        self.weekly_chart.set_chart_colors(palette["kpi"], palette["accent_soft"])
+        self._legend_sent.setStyleSheet(f"color: {palette['kpi']}; font-weight: 700;")
+        self._legend_peak.setStyleSheet(f"color: {palette['accent_soft']}; font-weight: 700;")
 
     def update_cards(self, sent_count: int, received_count: int, contacts_count: int, drafts_count: int) -> None:
         self.sent_card[1].setText(str(sent_count))
@@ -254,34 +286,48 @@ class DashboardPage(QWidget):
     def update_sent_rows(self, rows: list[dict[str, Any]]) -> None:
         shown_rows = rows[: self._display_limit]
         self.sent_table.setRowCount(len(shown_rows))
-        for row_index, row in enumerate(shown_rows):
-            mobile = str(row.get("mobile", row.get("receiver", row.get("phoneNumber", "-"))))
-            values = [
-                str(row.get("messageId", row.get("id", "-"))),
-                mask_mobile(mobile) if self.mask_mobile_numbers else mobile,
-                str(row.get("messageText", row.get("text", row.get("message", "-")))),
-                str(self._pick_value(row, SEND_TIME_KEYS, "-")),
-            ]
-            for column, value in enumerate(values):
-                self.sent_table.setItem(row_index, column, QTableWidgetItem(value))
 
-        autosize_table_columns(self.sent_table, stretch_columns=(2,), max_width=360)
+        if not shown_rows:
+            self.sent_table.hide()
+            self.sent_empty_label.show()
+        else:
+            self.sent_empty_label.hide()
+            self.sent_table.show()
+            for row_index, row in enumerate(shown_rows):
+                mobile = str(row.get("mobile", row.get("receiver", row.get("phoneNumber", "-"))))
+                values = [
+                    str(row.get("messageId", row.get("id", "-"))),
+                    mask_mobile(mobile) if self.mask_mobile_numbers else mobile,
+                    str(row.get("messageText", row.get("text", row.get("message", "-")))),
+                    str(self._pick_value(row, SEND_TIME_KEYS, "-")),
+                ]
+                for column, value in enumerate(values):
+                    self.sent_table.setItem(row_index, column, QTableWidgetItem(value))
+            autosize_table_columns(self.sent_table, stretch_columns=(2,), max_width=360)
+
         self._adjust_activity_panels(self.sent_table.rowCount(), self.recv_table.rowCount())
 
     def update_received_rows(self, rows: list[dict[str, Any]]) -> None:
         shown_rows = rows[: self._display_limit]
         self.recv_table.setRowCount(len(shown_rows))
-        for row_index, row in enumerate(shown_rows):
-            mobile = str(row.get("mobile", row.get("sender", row.get("from", "-"))))
-            values = [
-                mask_mobile(mobile) if self.mask_mobile_numbers else mobile,
-                str(row.get("messageText", row.get("text", row.get("message", "-")))),
-                str(self._pick_value(row, RECEIVE_TIME_KEYS, "-")),
-            ]
-            for column, value in enumerate(values):
-                self.recv_table.setItem(row_index, column, QTableWidgetItem(value))
 
-        autosize_table_columns(self.recv_table, stretch_columns=(1,), max_width=360)
+        if not shown_rows:
+            self.recv_table.hide()
+            self.recv_empty_label.show()
+        else:
+            self.recv_empty_label.hide()
+            self.recv_table.show()
+            for row_index, row in enumerate(shown_rows):
+                mobile = str(row.get("mobile", row.get("sender", row.get("from", "-"))))
+                values = [
+                    mask_mobile(mobile) if self.mask_mobile_numbers else mobile,
+                    str(row.get("messageText", row.get("text", row.get("message", "-")))),
+                    str(self._pick_value(row, RECEIVE_TIME_KEYS, "-")),
+                ]
+                for column, value in enumerate(values):
+                    self.recv_table.setItem(row_index, column, QTableWidgetItem(value))
+            autosize_table_columns(self.recv_table, stretch_columns=(1,), max_width=360)
+
         self._adjust_activity_panels(self.sent_table.rowCount(), self.recv_table.rowCount())
 
     def update_analytics(
@@ -332,7 +378,6 @@ class DashboardPage(QWidget):
             parsed = self._extract_datetime(timestamp)
             if parsed is None:
                 continue
-            # Python weekday: Monday=0 ... Sunday=6 -> Saturday-first index
             index = (parsed.weekday() + 2) % 7
             counts[index] += 1
         return counts
@@ -351,7 +396,6 @@ class DashboardPage(QWidget):
         if not text:
             return None
 
-        # برخی خروجی های API زمان را به صورت unix timestamp برمی گردانند.
         if re.fullmatch(r"\d{10,13}", text):
             try:
                 raw_value = int(text)
@@ -391,46 +435,19 @@ class DashboardPage(QWidget):
 
     def _row_has_failure_status(self, row: dict[str, Any]) -> bool:
         failure_tokens = {
-            "0",
-            "-1",
-            "failed",
-            "error",
-            "undelivered",
-            "notdelivered",
-            "rejected",
-            "reject",
-            "blacklist",
-            "invalid",
-            "timeout",
-            "cancel",
-            "canceled",
-            "cancelled",
-            "ناموفق",
-            "خطا",
-            "ارسال نشده",
-            "برگشت",
+            "0", "-1", "failed", "error", "undelivered", "notdelivered",
+            "rejected", "reject", "blacklist", "invalid", "timeout",
+            "cancel", "canceled", "cancelled", "ناموفق", "خطا", "ارسال نشده", "برگشت",
         }
-
         candidate_keys = (
-            "deliveryState",
-            "deliveryStatus",
-            "deliveryResult",
-            "status",
-            "state",
-            "statusText",
-            "statusName",
-            "result",
-            "resultCode",
-            "errorCode",
-            "error",
+            "deliveryState", "deliveryStatus", "deliveryResult", "status",
+            "state", "statusText", "statusName", "result", "resultCode", "errorCode", "error",
         )
-
         for key, value in row.items():
             key_text = str(key).lower()
             if not any(token in key_text for token in ("status", "state", "delivery", "result", "error")):
                 if key not in candidate_keys:
                     continue
-
             text = str(value).strip().lower()
             if not text:
                 continue
@@ -439,7 +456,6 @@ class DashboardPage(QWidget):
                 return True
             if text.isdigit() and int(text) < 0:
                 return True
-
         return False
 
     @staticmethod

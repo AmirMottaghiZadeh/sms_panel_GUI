@@ -39,6 +39,8 @@ class SettingsStore:
             "last_api_success_at": "",
             "log_level": "INFO",
             "log_file_path": "",
+            "auto_refresh_interval_sec": 0,
+            "window_geometry": "",
             "contacts": [],
             "drafts": [],
         }
@@ -129,6 +131,10 @@ class SettingsStore:
         log_level = self._as_text(data.get("log_level"), "INFO").upper()
         sanitized["log_level"] = log_level if log_level in allowed_log_levels else "INFO"
         sanitized["log_file_path"] = self._as_text(data.get("log_file_path"), "")
+        sanitized["auto_refresh_interval_sec"] = self._as_int(
+            data.get("auto_refresh_interval_sec"), default=0, minimum=0, maximum=3600
+        )
+        sanitized["window_geometry"] = self._as_text(data.get("window_geometry"), "")
 
         contacts = data.get("contacts")
         drafts = data.get("drafts")

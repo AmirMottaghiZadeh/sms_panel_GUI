@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone, timedelta
 from typing import Any
 
 import requests
 
 from sms_panel.core.models import ApiResult
+
+_TEHRAN_TZ = timezone(timedelta(hours=3, minutes=30))
 
 try:
     from sms_ir import SmsIr as SmsIrSdk
@@ -76,6 +79,19 @@ class SmsIrClient:
             raw={"error": message},
         )
 
+    @staticmethod
+    def _iso_to_unix(date_str: str, end_of_day: bool = False) -> int | None:
+        """Convert YYYY-MM-DD to Unix timestamp in Iran Standard Time (UTC+3:30)."""
+        if not date_str:
+            return None
+        try:
+            dt = datetime.strptime(date_str, "%Y-%m-%d")
+            if end_of_day:
+                dt = dt.replace(hour=23, minute=59, second=59)
+            return int(dt.replace(tzinfo=_TEHRAN_TZ).timestamp())
+        except ValueError:
+            return None
+
     def update_network_options(self, timeout_sec: int, retry_count: int) -> None:
         self.timeout = max(5, min(120, int(timeout_sec)))
         self.retries = max(0, min(5, int(retry_count)))
@@ -130,18 +146,20 @@ class SmsIrClient:
         return self._request("GET", "/v1/send/live/", params={"pageSize": page_size, "pageNumber": page_number})
 
     def report_archived(self, from_date: str, to_date: str, page_size: int = 20, page_number: int = 1) -> ApiResult:
+        from_unix = self._iso_to_unix(from_date)
+        to_unix = self._iso_to_unix(to_date, end_of_day=True)
         if self.sdk is not None:
             return self._parse_response(
                 self.sdk.report_archived(
-                    from_date=from_date or None,
-                    to_date=to_date or None,
+                    from_date=from_unix,
+                    to_date=to_unix,
                     page_size=page_size,
                     page_number=page_number,
                 )
             )
         params = {
-            "fromDate": from_date or None,
-            "toDate": to_date or None,
+            "fromDate": from_unix,
+            "toDate": to_unix,
             "pageSize": page_size,
             "pageNumber": page_number,
         }
@@ -158,18 +176,20 @@ class SmsIrClient:
         return self._request("GET", "/v1/receive/live/", params={"pageSize": page_size, "pageNumber": page_number})
 
     def report_archived_received(self, from_date: str, to_date: str, page_size: int = 20, page_number: int = 1) -> ApiResult:
+        from_unix = self._iso_to_unix(from_date)
+        to_unix = self._iso_to_unix(to_date, end_of_day=True)
         if self.sdk is not None:
             return self._parse_response(
                 self.sdk.report_archived_received(
-                    from_date=from_date or None,
-                    to_date=to_date or None,
+                    from_date=from_unix,
+                    to_date=to_unix,
                     page_size=page_size,
                     page_number=page_number,
                 )
             )
         params = {
-            "fromDate": from_date or None,
-            "toDate": to_date or None,
+            "fromDate": from_unix,
+            "toDate": to_unix,
             "pageSize": page_size,
             "pageNumber": page_number,
         }

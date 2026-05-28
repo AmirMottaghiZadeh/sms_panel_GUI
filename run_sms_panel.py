@@ -17,7 +17,6 @@ VENV_DIR = PROJECT_ROOT / ".venv"
 RETRY_ENV_VAR = "SMS_PANEL_BOOTSTRAP_RETRIES"
 DEFAULT_RETRY_LIMIT = 3
 RETRY_DELAY_SECONDS = 2
-MIRROR_INDEX_URL = "https://mirror-pypi.runflare.com/simple"
 BOOTSTRAP_STATE_FILE = VENV_DIR / ".bootstrap_state.json"
 READY_CHECK_FLAG = "--is-bootstrap-ready"
 
@@ -78,14 +77,6 @@ def recreate_virtualenv() -> bool:
     return ok
 
 
-def pip_mirror_env() -> dict[str, str]:
-    return {
-        # Disable all pip config files to avoid silently falling back to other indexes.
-        "PIP_CONFIG_FILE": os.devnull,
-        "PIP_INDEX_URL": MIRROR_INDEX_URL,
-    }
-
-
 def should_upgrade_pip() -> bool:
     if not sys.stdin or not sys.stdin.isatty():
         print("[bootstrap] Non-interactive mode detected. pip upgrade is skipped.")
@@ -94,7 +85,7 @@ def should_upgrade_pip() -> bool:
     while True:
         try:
             choice = input(
-                "[bootstrap] Do you want to upgrade pip from the mirror before installing dependencies? [y/N]: "
+                "[bootstrap] Do you want to upgrade pip before installing dependencies? [y/N]: "
             )
         except EOFError:
             print("\n[bootstrap] No input received. pip upgrade is skipped.")
@@ -117,7 +108,6 @@ def requirements_hash() -> str:
 def expected_bootstrap_state() -> dict[str, str]:
     return {
         "requirements_sha256": requirements_hash(),
-        "mirror_index_url": MIRROR_INDEX_URL,
         "python_version": f"{sys.version_info.major}.{sys.version_info.minor}",
     }
 
@@ -158,25 +148,87 @@ def is_bootstrap_ready(python_bin: Path) -> bool:
     return True
 
 
+def count_requirements() -> int:
+    """Count installable lines in requirements.txt (skip comments and options)."""
+    count = 0
+    try:
+        for line in REQUIREMENTS_FILE.read_text(encoding="utf-8").splitlines():
+            s = line.strip()
+            if s and not s.startswith(("#", "-", "http", "git+")):
+                count += 1
+    except OSError:
+        pass
+    return count
+
+
+def install_packages_with_progress(python_bin: Path, total_pkgs: int) -> bool:
+    """Run pip install and display per-package numeric progress."""
+    env = os.environ.copy()
+    try:
+        process = subprocess.Popen(
+            [str(python_bin), "-m", "pip", "install", "-r", str(REQUIREMENTS_FILE)],
+            cwd=PROJECT_ROOT,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            env=env,
+            bufsize=1,
+        )
+    except OSError as exc:
+        print(f"[bootstrap] Failed to start pip: {exc}", file=sys.stderr, flush=True)
+        return False
+
+    output_lines: list[str] = []
+    collected = 0
+    assert process.stdout is not None
+    for line in process.stdout:
+        output_lines.append(line)
+        stripped = line.strip()
+
+        if stripped.startswith("Collecting "):
+            collected += 1
+            pct = int(collected / total_pkgs * 100) if total_pkgs > 0 else 0
+            filled = pct // 5
+            bar = "#" * filled + "-" * (20 - filled)
+            pkg = stripped[len("Collecting "):].split()[0] if len(stripped) > 11 else "..."
+            print(f"[bootstrap] [{bar}] {pct:3d}% ({collected:2d}/{total_pkgs})  {pkg}", flush=True)
+        elif stripped.startswith("Requirement already satisfied"):
+            collected += 1
+            pct = int(collected / total_pkgs * 100) if total_pkgs > 0 else 0
+            pkg = stripped.split(":")[0].replace("Requirement already satisfied", "").strip().split()[0] if ":" in stripped else "cached"
+            print(f"[bootstrap] [{'#' * (pct // 5)}{'-' * (20 - pct // 5)}] {pct:3d}% ({collected:2d}/{total_pkgs})  {pkg} (cached)", flush=True)
+        elif stripped.startswith("Successfully installed"):
+            filled_bar = "#" * 20
+            print(f"[bootstrap] [{filled_bar}] 100% ({total_pkgs}/{total_pkgs})  done!", flush=True)
+            print(f"[bootstrap] {stripped}", flush=True)
+        elif "ERROR" in stripped or stripped.lower().startswith("error"):
+            print(f"[bootstrap] {stripped}", flush=True)
+        # other lines (Downloading, Installing, etc.) are intentionally suppressed
+        # to keep the progress display clean; errors still surface above
+
+    return_code = process.wait()
+    if return_code != 0:
+        print(f"[bootstrap] pip exited with code {return_code}", flush=True)
+        # print full output on failure for diagnosis
+        print("".join(output_lines), flush=True)
+    return return_code == 0
+
+
 def install_dependencies(python_bin: Path, upgrade_pip: bool) -> bool:
-    mirror_env = pip_mirror_env()
-    print(f"[bootstrap] Installing dependencies only from mirror: {MIRROR_INDEX_URL}")
+    total_pkgs = count_requirements()
+    print(f"[bootstrap] نصب {total_pkgs} وابستگی آغاز شد...", flush=True)
+    print(f"[bootstrap] Starting installation of {total_pkgs} packages...", flush=True)
 
     if upgrade_pip:
         ok, _ = run_command(
-            [str(python_bin), "-m", "pip", "install", "--upgrade", "pip", "-i", MIRROR_INDEX_URL],
-            extra_env=mirror_env,
+            [str(python_bin), "-m", "pip", "install", "--upgrade", "pip"],
         )
         if not ok:
             return False
     else:
-        print("[bootstrap] Skipping pip upgrade by user choice.")
+        print("[bootstrap] Skipping pip upgrade by user choice.", flush=True)
 
-    ok, _ = run_command(
-        [str(python_bin), "-m", "pip", "install", "-r", str(REQUIREMENTS_FILE), "-i", MIRROR_INDEX_URL],
-        extra_env=mirror_env,
-    )
-    return ok
+    return install_packages_with_progress(python_bin, total_pkgs)
 
 
 def launch_app(python_bin: Path) -> int:

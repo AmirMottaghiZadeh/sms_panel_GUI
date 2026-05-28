@@ -6,8 +6,8 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Callable
 
-from PyQt6.QtCore import Qt, QThreadPool
-from PyQt6.QtGui import QIcon, QPixmap
+from PyQt6.QtCore import QByteArray, Qt, QThreadPool, QTimer
+from PyQt6.QtGui import QIcon, QKeySequence, QPixmap, QShortcut
 from PyQt6.QtWidgets import (
     QApplication,
     QDialog,
@@ -43,8 +43,8 @@ from sms_panel.ui.pages.drafts_page import DraftsPage
 from sms_panel.ui.pages.reports_page import ReportsPage
 from sms_panel.ui.pages.send_page import SendPage
 from sms_panel.ui.pages.settings_page import SettingsPage
-from sms_panel.ui.theme import build_stylesheet
-from sms_panel.ui.widgets import CardFrame, NavButton, StatusBadge
+from sms_panel.ui.theme import build_qt_palette, build_stylesheet, palette_for
+from sms_panel.ui.widgets import CardFrame, NavButton, StatusBadge, ToastNotification
 
 
 class MainWindow(QMainWindow):
@@ -69,10 +69,19 @@ class MainWindow(QMainWindow):
         )
 
         self._apply_window_branding()
+        self.setMinimumSize(1100, 720)
         self.resize(1320, 860)
 
         self._build_ui()
+
+        self.toast = ToastNotification(self)
+
+        self._refresh_timer = QTimer(self)
+        self._refresh_timer.timeout.connect(self.refresh_all)
+
+        self._add_keyboard_shortcuts()
         self._apply_runtime_settings()
+        self._restore_window_geometry()
         self._enforce_app_lock()
         self.refresh_account_data()
         self.refresh_dashboard()
@@ -231,29 +240,26 @@ class MainWindow(QMainWindow):
 
         self.nav_buttons: dict[str, NavButton] = {}
         items = [
-            ("dashboard", "داشبورد"),
-            ("send", "ارسال پیام"),
-            ("drafts", "پیش نویس ها"),
-            ("contacts", "لیست مخاطبین"),
-            ("reports", "گزارش ها"),
-            ("credit", "اعتبار حساب"),
-            ("settings", "تنظیمات"),
+            ("dashboard", "● داشبورد"),
+            ("send",      "▶ ارسال پیام"),
+            ("drafts",    "◇ پیش نویس ها"),
+            ("contacts",  "◎ مخاطبین"),
+            ("reports",   "☰ گزارش ها"),
+            ("credit",    "◆ اعتبار حساب"),
+            ("settings",  "⚙ تنظیمات"),
         ]
 
         for key, text in items:
             btn = NavButton()
             btn.setText(text)
             btn.setCheckable(True)
+            btn.setToolTip(text)
             btn.clicked.connect(lambda checked, route=key: self.switch_page(route))
             btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
             layout.addWidget(btn)
             self.nav_buttons[key] = btn
 
         layout.addStretch(1)
-
-        fusion_hint = QLabel("Style Engine: Fusion")
-        fusion_hint.setProperty("class", "muted")
-        layout.addWidget(fusion_hint)
         return side
 
     def switch_page(self, route: str) -> None:
@@ -265,6 +271,43 @@ class MainWindow(QMainWindow):
             button.setChecked(key == route)
             if key == route:
                 self.route_label.setText(button.text())
+
+    def _add_keyboard_shortcuts(self) -> None:
+        for index, key in enumerate(self.page_order, start=1):
+            shortcut = QShortcut(QKeySequence(f"Ctrl+{index}"), self)
+            shortcut.activated.connect(lambda route=key: self.switch_page(route))
+
+    def _restore_window_geometry(self) -> None:
+        geo_str = str(self.settings.get("window_geometry", "")).strip()
+        if geo_str:
+            try:
+                self.restoreGeometry(QByteArray.fromBase64(geo_str.encode("ascii")))
+            except Exception:
+                pass
+
+    def _save_window_geometry(self) -> None:
+        self.settings["window_geometry"] = self.saveGeometry().toBase64().data().decode("ascii")
+        self.persist_settings()
+
+    def _update_refresh_timer(self) -> None:
+        interval_sec = int(self.settings.get("auto_refresh_interval_sec", 0) or 0)
+        self._refresh_timer.stop()
+        if interval_sec > 0:
+            self._refresh_timer.start(interval_sec * 1000)
+
+    def _update_chart_palette(self) -> None:
+        theme = str(self.settings.get("theme", "light"))
+        scheme = str(self.settings.get("color_scheme", "peach_eggplant"))
+        self.dashboard_page.update_chart_palette(palette_for(theme, scheme))
+
+    def resizeEvent(self, event: Any) -> None:  # noqa: ANN401
+        super().resizeEvent(event)
+        if hasattr(self, "toast"):
+            self.toast._reposition()
+
+    def closeEvent(self, event: Any) -> None:  # noqa: ANN401
+        self._save_window_geometry()
+        super().closeEvent(event)
 
     def run_async(self, fn: Callable[[], Any], done: Callable[[Any, Exception | None], None]) -> None:
         worker = ApiWorker(fn)
@@ -558,7 +601,9 @@ class MainWindow(QMainWindow):
         scheme_name = str(self.settings.get("color_scheme", "peach_eggplant"))
         font_scale = str(self.settings.get("font_scale", "normal"))
         ui_density = str(self.settings.get("ui_density", "comfortable"))
-        QApplication.instance().setStyleSheet(build_stylesheet(theme_name, scheme_name, font_scale, ui_density))
+        app = QApplication.instance()
+        app.setPalette(build_qt_palette(theme_name, scheme_name))
+        app.setStyleSheet(build_stylesheet(theme_name, scheme_name, font_scale, ui_density))
 
     def _resolve_logo_path(self) -> Path | None:
         custom_logo = str(self.settings.get("brand_logo_path", "")).strip()
@@ -612,6 +657,8 @@ class MainWindow(QMainWindow):
         ErrorHandler.configure_logging(log_level, log_file_path)
 
         self.apply_theme(str(self.settings.get("theme", "light")))
+        self._update_chart_palette()
+        self._update_refresh_timer()
 
         default_category = str(self.settings.get("contacts_default_category", "عمومی")).strip() or "عمومی"
         self.send_page.set_default_category(default_category)
@@ -688,6 +735,11 @@ class MainWindow(QMainWindow):
             if key in patch:
                 self.settings[key] = str(patch.get(key, "")).strip()
 
+        if "auto_refresh_interval_sec" in patch:
+            self.settings["auto_refresh_interval_sec"] = max(
+                0, min(3600, int(patch.get("auto_refresh_interval_sec", 0) or 0))
+            )
+
         self._apply_runtime_settings()
         self.persist_settings()
 
@@ -728,8 +780,15 @@ class MainWindow(QMainWindow):
         return answer == QMessageBox.StandardButton.Yes
 
     def _notify_success(self, title: str, message: str) -> None:
-        if self.settings.get("notify_on_success", True):
-            self._notify("information", title, message)
+        if not self.settings.get("notify_on_success", True):
+            return
+        ErrorHandler.log_info(f"{title}: {message}")
+        if not self.settings.get("show_popup_notifications", True):
+            return
+        if hasattr(self, "toast"):
+            self.toast.show_toast(f"{title}: {message}", level="ok")
+        else:
+            QMessageBox.information(self, title, message)
 
     def _notify_error(self, title: str, message: str) -> None:
         if self.settings.get("notify_on_error", True):

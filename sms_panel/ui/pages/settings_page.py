@@ -302,6 +302,9 @@ class SettingsPage(QWidget):
         self.scheme_combo.addItem("نارنجی - مشکی", "orange_black")
         self.scheme_combo.addItem("بژ - قرمز گرادیانت", "beige_red_gradient")
         self.scheme_combo.addItem("سرمه ای - طلایی", "school_navy_gold")
+        self.scheme_combo.addItem("زمردی - فیروزه ای", "emerald_teal")
+        self.scheme_combo.addItem("یاسی - بنفش", "lavender_rose")
+        self.scheme_combo.addItem("آسمانی - نیلی", "sky_indigo")
 
         self.font_scale_combo = SelectComboBox()
         self.font_scale_combo.addItem("کوچک", "small")
@@ -312,16 +315,25 @@ class SettingsPage(QWidget):
         self.ui_density_combo.addItem("فشرده", "compact")
         self.ui_density_combo.addItem("راحت", "comfortable")
 
+        self.auto_refresh_combo = SelectComboBox()
+        self.auto_refresh_combo.addItem("غیرفعال", 0)
+        self.auto_refresh_combo.addItem("۳۰ ثانیه", 30)
+        self.auto_refresh_combo.addItem("۱ دقیقه", 60)
+        self.auto_refresh_combo.addItem("۲ دقیقه", 120)
+        self.auto_refresh_combo.addItem("۵ دقیقه", 300)
+
         form.addRow("تم برنامه", self.theme_combo)
         form.addRow("مجموعه رنگ", self.scheme_combo)
         form.addRow("اندازه فونت", self.font_scale_combo)
         form.addRow("تراکم نمایش", self.ui_density_combo)
+        form.addRow("بروزرسانی خودکار داشبورد", self.auto_refresh_combo)
         layout.addLayout(form)
 
         self.theme_combo.currentIndexChanged.connect(self._save_appearance)
         self.scheme_combo.currentIndexChanged.connect(self._save_appearance)
         self.font_scale_combo.currentIndexChanged.connect(self._save_appearance)
         self.ui_density_combo.currentIndexChanged.connect(self._save_appearance)
+        self.auto_refresh_combo.currentIndexChanged.connect(self._save_appearance)
 
     def _build_security_section(self) -> None:
         _, layout = self._section_card(
@@ -395,7 +407,7 @@ class SettingsPage(QWidget):
         version_label = QLabel(f"نسخه برنامه: {self.app_version}")
         version_label.setProperty("class", "fa-note")
 
-        docs_label = QLabel("مستندات: README.md | پشتیبانی: Issues پروژه")
+        docs_label = QLabel("مستندات: README.md  |  پشتیبانی: Issues پروژه  |  SMS.ir REST API Panel")
         docs_label.setProperty("class", "fa-note")
 
         layout.addWidget(version_label)
@@ -410,6 +422,11 @@ class SettingsPage(QWidget):
         self._set_combo_data(self.scheme_combo, str(settings.get("color_scheme", "peach_eggplant")))
         self._set_combo_data(self.font_scale_combo, str(settings.get("font_scale", "normal")))
         self._set_combo_data(self.ui_density_combo, str(settings.get("ui_density", "comfortable")))
+        auto_refresh_val = int(settings.get("auto_refresh_interval_sec", 0) or 0)
+        idx = self.auto_refresh_combo.findData(auto_refresh_val)
+        self.auto_refresh_combo.blockSignals(True)
+        self.auto_refresh_combo.setCurrentIndex(idx if idx >= 0 else 0)
+        self.auto_refresh_combo.blockSignals(False)
 
         self._set_line_text(self.line_input, settings.get("line_number", ""))
         self._set_line_text(self.signature_input, settings.get("message_signature", ""))
@@ -514,6 +531,7 @@ class SettingsPage(QWidget):
                 "color_scheme": str(self.scheme_combo.currentData() or "peach_eggplant"),
                 "font_scale": str(self.font_scale_combo.currentData() or "normal"),
                 "ui_density": str(self.ui_density_combo.currentData() or "comfortable"),
+                "auto_refresh_interval_sec": int(self.auto_refresh_combo.currentData() or 0),
             }
         )
 

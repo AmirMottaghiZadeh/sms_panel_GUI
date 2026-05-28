@@ -22,7 +22,7 @@
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt -i https://mirror-pypi.runflare.com/simple
+pip install -r requirements.txt
 python3 -m sms_panel
 ```
 
@@ -42,8 +42,7 @@ python3 sms_panel_desktop.py
 1) اگر یک نصب موفق قبلی وجود داشته باشد و `requirements.txt` تغییر نکرده باشد، مستقیم برنامه را اجرا می کند.
 2) در غیر این صورت محیط مجازی `.venv` را از صفر می سازد.
 3) از کاربر می پرسد که `pip` آپدیت بشود یا نه (پیش فرض: خیر).
-4) `pip` (در صورت تایید کاربر) و وابستگی ها را فقط از میرور زیر نصب می کند:
-   - `https://mirror-pypi.runflare.com/simple`
+4) وابستگی ها را از PyPI نصب می کند.
 5) اگر هر مرحله شکست بخورد، از ابتدا تکرار می کند.
 6) بعد از نصب موفق، فایل `sms_panel_desktop.py` را اجرا می کند.
 7) در اولین اجرا، ترمینال بوت استرپ با جزئیات کامل مراحل نصب نمایش داده می شود.

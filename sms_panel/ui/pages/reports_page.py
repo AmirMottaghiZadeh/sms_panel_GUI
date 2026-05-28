@@ -1,13 +1,17 @@
 from __future__ import annotations
 
+import csv
 import re
+from pathlib import Path
 from typing import Any
 
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import (
+    QFileDialog,
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QMessageBox,
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
@@ -17,6 +21,7 @@ from PyQt6.QtWidgets import (
 from sms_panel.services.contacts import mask_mobile
 from sms_panel.services.response_parser import extract_items
 from sms_panel.ui.jalali_calendar import JalaliDateField
+from sms_panel.config import PROJECT_ROOT
 from sms_panel.ui.widgets import CardFrame, NumericLineEdit, SecondaryButton, autosize_table_columns
 
 
@@ -115,9 +120,16 @@ class ReportsPage(QWidget):
         query_layout.addLayout(row_d)
         root.addWidget(query)
 
+        meta_row = QHBoxLayout()
         self.meta_label = QLabel("نتیجه گزارش به صورت جدول نمایش داده می شود")
         self.meta_label.setProperty("class", "fa-note")
-        root.addWidget(self.meta_label)
+        meta_row.addWidget(self.meta_label, 1)
+
+        self.export_csv_btn = SecondaryButton("دانلود CSV")
+        self.export_csv_btn.clicked.connect(self._export_csv)
+        self.export_csv_btn.setEnabled(False)
+        meta_row.addWidget(self.export_csv_btn)
+        root.addLayout(meta_row)
 
         self.output_table = QTableWidget(0, 0)
         self.output_table.setAlternatingRowColors(True)
@@ -197,6 +209,7 @@ class ReportsPage(QWidget):
 
         status_text = "موفق" if ok else "خطا"
         self.meta_label.setText(f"وضعیت: {status_text} | کد: {status_code} | پیام: {message} | ردیف: {len(rows)}")
+        self.export_csv_btn.setEnabled(len(rows) > 0 and len(columns) > 0)
 
     @staticmethod
     def _looks_like_mobile_column(column_name: str) -> bool:
@@ -229,6 +242,38 @@ class ReportsPage(QWidget):
         if label is None:
             return f"وضعیت نامشخص (کد {code})"
         return f"{label} (کد {code})"
+
+    def _export_csv(self) -> None:
+        if self.output_table.columnCount() == 0 or self.output_table.rowCount() == 0:
+            QMessageBox.information(self, "خروجی CSV", "جدولی برای دانلود وجود ندارد.")
+            return
+
+        file_name, _ = QFileDialog.getSaveFileName(
+            self,
+            "ذخیره گزارش CSV",
+            str(PROJECT_ROOT / "report.csv"),
+            "CSV Files (*.csv)",
+        )
+        if not file_name:
+            return
+
+        try:
+            with Path(file_name).open("w", newline="", encoding="utf-8-sig") as f:
+                writer = csv.writer(f)
+                headers = [
+                    self.output_table.horizontalHeaderItem(col).text()
+                    for col in range(self.output_table.columnCount())
+                ]
+                writer.writerow(headers)
+                for row in range(self.output_table.rowCount()):
+                    row_data = []
+                    for col in range(self.output_table.columnCount()):
+                        item = self.output_table.item(row, col)
+                        row_data.append(item.text() if item else "")
+                    writer.writerow(row_data)
+            QMessageBox.information(self, "خروجی CSV", "فایل CSV با موفقیت ذخیره شد.")
+        except Exception as exc:
+            QMessageBox.critical(self, "خروجی CSV", f"خطا در ذخیره فایل:\n{exc}")
 
     def set_mask_mobile_numbers(self, enabled: bool) -> None:
         self.mask_mobile_numbers = bool(enabled)

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Dict
 
+from PyQt6.QtGui import QColor, QPalette
+
 
 def _merge_palette(base: Dict[str, str], overrides: Dict[str, str]) -> dict[str, str]:
     merged = dict(base)
@@ -283,12 +285,232 @@ def palette_for(theme_name: str, scheme_name: str) -> dict[str, str]:
                 "table_header": "#2A425D",
             },
         },
+        "emerald_teal": {
+            "light": {
+                "bg": "#EBF6F1",
+                "bg_alt": "#D6EDDF",
+                "surface": "#F5FBF7",
+                "surface2": "#E2F2E8",
+                "surface3": "#C8E4D0",
+                "text": "#122A1C",
+                "muted": "#4A7A5C",
+                "accent": "#1A6B4A",
+                "accent_soft": "#2E9468",
+                "accent_text": "#F0FBF5",
+                "primary_bg": "#1A6B4A",
+                "primary_hover_bg": "#2E9468",
+                "primary_pressed_bg": "#145939",
+                "primary_hover_text": "#F0FBF5",
+                "kpi": "#1A6B4A",
+                "ok": "#1A8F5E",
+                "warn": "#C87A1A",
+                "error": "#C03030",
+                "input_bg": "#F8FDF9",
+                "input_border": "#8FC9A0",
+                "input_focus": "#1A6B4A",
+                "table_header": "#D6EDDF",
+                "selection_bg": "#1A6B4A",
+                "selection_text": "#F0FBF5",
+                "scroll_bg": "#D0E8D8",
+                "scroll_handle": "#70A880",
+            },
+            "dark": {
+                "bg": "#0D1F15",
+                "bg_alt": "#142A1C",
+                "surface": "#112018",
+                "surface2": "#1C2F22",
+                "surface3": "#2A4032",
+                "text": "#E0F5E8",
+                "muted": "#80BF94",
+                "accent": "#2ECC71",
+                "accent_soft": "#52D68A",
+                "accent_text": "#081509",
+                "primary_bg": "#1A6B4A",
+                "primary_hover_bg": "#2ECC71",
+                "primary_pressed_bg": "#259457",
+                "primary_hover_text": "#081509",
+                "kpi": "#2ECC71",
+                "ok": "#44D982",
+                "warn": "#F4C14A",
+                "error": "#FF7070",
+                "input_bg": "#162A1E",
+                "input_border": "#2D6040",
+                "input_focus": "#2ECC71",
+                "table_header": "#1C3026",
+                "selection_bg": "#2ECC71",
+                "selection_text": "#081509",
+                "scroll_bg": "#182A20",
+                "scroll_handle": "#2A6040",
+            },
+        },
+        "lavender_rose": {
+            "light": {
+                "bg": "#F5F0FC",
+                "bg_alt": "#EAE0F8",
+                "surface": "#FAF6FF",
+                "surface2": "#EEE5FA",
+                "surface3": "#DDD0F5",
+                "text": "#200F3A",
+                "muted": "#6E56A0",
+                "accent": "#5B1DB5",
+                "accent_soft": "#7C44D0",
+                "accent_text": "#FAF5FF",
+                "primary_bg": "#5B1DB5",
+                "primary_hover_bg": "#7C44D0",
+                "primary_pressed_bg": "#4A139A",
+                "primary_hover_text": "#FAF5FF",
+                "kpi": "#5B1DB5",
+                "ok": "#2A9A6F",
+                "warn": "#C98A1A",
+                "error": "#C03040",
+                "input_bg": "#FBF9FF",
+                "input_border": "#C4A8E8",
+                "input_focus": "#5B1DB5",
+                "table_header": "#EAE0F8",
+                "selection_bg": "#5B1DB5",
+                "selection_text": "#FAF5FF",
+                "scroll_bg": "#DFD8F0",
+                "scroll_handle": "#A090C8",
+            },
+            "dark": {
+                "bg": "#130B22",
+                "bg_alt": "#1E1232",
+                "surface": "#1B1030",
+                "surface2": "#281840",
+                "surface3": "#382255",
+                "text": "#F0E8FF",
+                "muted": "#B09AE0",
+                "accent": "#A86EFF",
+                "accent_soft": "#C098FF",
+                "accent_text": "#13073A",
+                "primary_bg": "#5B1DB5",
+                "primary_hover_bg": "#A86EFF",
+                "primary_pressed_bg": "#4C12A0",
+                "primary_hover_text": "#13073A",
+                "kpi": "#A86EFF",
+                "ok": "#4AC898",
+                "warn": "#F5C14A",
+                "error": "#FF7080",
+                "input_bg": "#1E1238",
+                "input_border": "#5A3890",
+                "input_focus": "#A86EFF",
+                "table_header": "#281848",
+                "selection_bg": "#A86EFF",
+                "selection_text": "#13073A",
+                "scroll_bg": "#1E1430",
+                "scroll_handle": "#5A3890",
+            },
+        },
+        "sky_indigo": {
+            "light": {
+                "bg": "#EBF3FF",
+                "bg_alt": "#D5E7FF",
+                "surface": "#F5F9FF",
+                "surface2": "#E0EEFF",
+                "surface3": "#C0D8FF",
+                "text": "#0B1A33",
+                "muted": "#4A6899",
+                "accent": "#1840A8",
+                "accent_soft": "#3060D8",
+                "accent_text": "#EEF5FF",
+                "primary_bg": "#1840A8",
+                "primary_hover_bg": "#3060D8",
+                "primary_pressed_bg": "#12328C",
+                "primary_hover_text": "#EEF5FF",
+                "kpi": "#1840A8",
+                "ok": "#1A8F6A",
+                "warn": "#C87C1A",
+                "error": "#C03030",
+                "input_bg": "#F8FBFF",
+                "input_border": "#A0BFE8",
+                "input_focus": "#1840A8",
+                "table_header": "#D5E7FF",
+                "selection_bg": "#1840A8",
+                "selection_text": "#EEF5FF",
+                "scroll_bg": "#D0E4FF",
+                "scroll_handle": "#7090C0",
+            },
+            "dark": {
+                "bg": "#070D1E",
+                "bg_alt": "#0E172D",
+                "surface": "#0C1528",
+                "surface2": "#142035",
+                "surface3": "#1E304A",
+                "text": "#D8EAFF",
+                "muted": "#6090C8",
+                "accent": "#4C9AFF",
+                "accent_soft": "#6AADFF",
+                "accent_text": "#040B1C",
+                "primary_bg": "#1840A8",
+                "primary_hover_bg": "#4C9AFF",
+                "primary_pressed_bg": "#0F3090",
+                "primary_hover_text": "#040B1C",
+                "kpi": "#4C9AFF",
+                "ok": "#38C8A0",
+                "warn": "#F5BE4A",
+                "error": "#FF7070",
+                "input_bg": "#0E1830",
+                "input_border": "#2050A0",
+                "input_focus": "#4C9AFF",
+                "table_header": "#142038",
+                "selection_bg": "#4C9AFF",
+                "selection_text": "#040B1C",
+                "scroll_bg": "#0E1830",
+                "scroll_handle": "#2A5090",
+            },
+        },
     }
 
     mode = "dark" if theme_name == "dark" else "light"
     base = base_dark if mode == "dark" else base_light
     scheme = schemes.get(scheme_name) or schemes["peach_eggplant"]
     return _merge_palette(base, scheme[mode])
+
+
+def _safe_qcolor(value: str, fallback: str) -> QColor:
+    """Return QColor from a hex string; fall back if the value is a CSS gradient."""
+    if value.startswith("qlineargradient"):
+        return QColor(fallback)
+    return QColor(value)
+
+
+def build_qt_palette(theme_name: str, scheme_name: str) -> QPalette:
+    """Build a QPalette so native Qt widgets (dialogs, checkboxes, etc.) respect the theme."""
+    p = palette_for(theme_name, scheme_name)
+    qt_p = QPalette()
+
+    bg = _safe_qcolor(p["bg"], p["surface"])
+    surface = QColor(p["surface"])
+    text = QColor(p["text"])
+    muted = QColor(p["muted"])
+    input_bg = QColor(p["input_bg"])
+    surface2 = QColor(p["surface2"])
+    sel_bg = _safe_qcolor(p["selection_bg"], p["accent"])
+    sel_text = QColor(p["selection_text"])
+    accent = _safe_qcolor(p["accent"], p["accent_soft"])
+
+    qt_p.setColor(QPalette.ColorRole.Window, bg)
+    qt_p.setColor(QPalette.ColorRole.WindowText, text)
+    qt_p.setColor(QPalette.ColorRole.Base, input_bg)
+    qt_p.setColor(QPalette.ColorRole.AlternateBase, surface2)
+    qt_p.setColor(QPalette.ColorRole.Text, text)
+    qt_p.setColor(QPalette.ColorRole.BrightText, QColor(p["accent_text"]))
+    qt_p.setColor(QPalette.ColorRole.Button, surface2)
+    qt_p.setColor(QPalette.ColorRole.ButtonText, text)
+    qt_p.setColor(QPalette.ColorRole.Highlight, sel_bg)
+    qt_p.setColor(QPalette.ColorRole.HighlightedText, sel_text)
+    qt_p.setColor(QPalette.ColorRole.PlaceholderText, muted)
+    qt_p.setColor(QPalette.ColorRole.ToolTipBase, surface)
+    qt_p.setColor(QPalette.ColorRole.ToolTipText, text)
+    qt_p.setColor(QPalette.ColorRole.Link, accent)
+    qt_p.setColor(QPalette.ColorRole.LinkVisited, QColor(p["accent_soft"]))
+
+    qt_p.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, muted)
+    qt_p.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.Text, muted)
+    qt_p.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.ButtonText, muted)
+    qt_p.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.Base, surface2)
+
+    return qt_p
 
 
 def build_stylesheet(
@@ -582,5 +804,201 @@ def build_stylesheet(
     StatusBadge[class="badge-error"] {{
         background: {palette['error']};
         color: #ffffff;
+    }}
+    ToastNotification {{
+        border-radius: 22px;
+        padding: 10px 28px;
+        font-weight: 700;
+        font-size: {base_font_size + 1}px;
+        min-width: 260px;
+    }}
+    ToastNotification[class="toast-ok"] {{
+        background: {palette['ok']};
+        color: #ffffff;
+    }}
+    ToastNotification[class="toast-error"] {{
+        background: {palette['error']};
+        color: #ffffff;
+    }}
+    ToastNotification[class="toast-warn"] {{
+        background: {palette['warn']};
+        color: #1a0d00;
+    }}
+    QLabel[class="sms-counter"] {{
+        color: {palette['muted']};
+        font-size: {base_font_size - 1}px;
+        padding: 1px 4px;
+    }}
+    QLabel[class="empty-state"] {{
+        color: {palette['muted']};
+        font-size: {base_font_size + 1}px;
+        padding: 24px;
+    }}
+    ClickableCardFrame:hover {{
+        border: 1px solid {palette['accent_soft']};
+    }}
+    QDialog {{
+        background: {palette['bg']};
+    }}
+    QDialog QWidget {{
+        background: {palette['bg']};
+        color: {palette['text']};
+    }}
+    QDialog CardFrame {{
+        background: {palette['surface']};
+    }}
+    QScrollArea {{
+        background: transparent;
+        border: none;
+    }}
+    QAbstractScrollArea > QWidget > QWidget {{
+        background: transparent;
+    }}
+    QCheckBox {{
+        color: {palette['text']};
+        spacing: 8px;
+    }}
+    QCheckBox::indicator {{
+        width: 18px;
+        height: 18px;
+        border-radius: 5px;
+        border: 2px solid {palette['input_border']};
+        background: {palette['input_bg']};
+    }}
+    QCheckBox::indicator:hover {{
+        border-color: {palette['accent_soft']};
+    }}
+    QCheckBox::indicator:checked {{
+        background: {palette['accent']};
+        border-color: {palette['accent']};
+    }}
+    QCheckBox::indicator:checked:hover {{
+        background: {palette['accent_soft']};
+        border-color: {palette['accent_soft']};
+    }}
+    QCheckBox:disabled {{
+        color: {palette['muted']};
+    }}
+    QCheckBox::indicator:disabled {{
+        border-color: {palette['surface3']};
+        background: {palette['surface2']};
+    }}
+    QRadioButton {{
+        color: {palette['text']};
+        spacing: 8px;
+    }}
+    QRadioButton::indicator {{
+        width: 18px;
+        height: 18px;
+        border-radius: 9px;
+        border: 2px solid {palette['input_border']};
+        background: {palette['input_bg']};
+    }}
+    QRadioButton::indicator:hover {{
+        border-color: {palette['accent_soft']};
+    }}
+    QRadioButton::indicator:checked {{
+        background: {palette['accent']};
+        border-color: {palette['accent']};
+    }}
+    QRadioButton:disabled {{
+        color: {palette['muted']};
+    }}
+    QMenuBar {{
+        background: {palette['surface']};
+        color: {palette['text']};
+        border-bottom: 1px solid {palette['surface3']};
+    }}
+    QMenuBar::item {{
+        padding: 4px 10px;
+        background: transparent;
+    }}
+    QMenuBar::item:selected {{
+        background: {palette['surface2']};
+        border-radius: 6px;
+    }}
+    QMenu {{
+        background: {palette['surface']};
+        color: {palette['text']};
+        border: 1px solid {palette['surface3']};
+        border-radius: 8px;
+        padding: 4px;
+    }}
+    QMenu::item {{
+        padding: 6px 20px 6px 12px;
+        border-radius: 4px;
+    }}
+    QMenu::item:selected {{
+        background: {palette['selection_bg']};
+        color: {palette['selection_text']};
+    }}
+    QMenu::separator {{
+        height: 1px;
+        background: {palette['surface3']};
+        margin: 4px 8px;
+    }}
+    QMessageBox {{
+        background: {palette['bg']};
+    }}
+    QMessageBox QLabel {{
+        color: {palette['text']};
+        background: transparent;
+    }}
+    QMessageBox QPushButton {{
+        background: {palette['surface2']};
+        color: {palette['text']};
+        border: 1px solid {palette['input_border']};
+        border-radius: 8px;
+        padding: 6px 16px;
+        min-width: 80px;
+    }}
+    QMessageBox QPushButton:hover {{
+        background: {palette['surface3']};
+        border-color: {palette['accent_soft']};
+    }}
+    QMessageBox QPushButton:default {{
+        background: {palette['primary_bg']};
+        color: {palette['accent_text']};
+        border-color: {palette['accent_soft']};
+    }}
+    QInputDialog {{
+        background: {palette['bg']};
+    }}
+    QInputDialog QLabel {{
+        color: {palette['text']};
+        background: transparent;
+    }}
+    QInputDialog QPushButton {{
+        background: {palette['surface2']};
+        color: {palette['text']};
+        border: 1px solid {palette['input_border']};
+        border-radius: 8px;
+        padding: 6px 16px;
+        min-width: 80px;
+    }}
+    QInputDialog QPushButton:hover {{
+        background: {palette['surface3']};
+        border-color: {palette['accent_soft']};
+    }}
+    QProgressBar {{
+        background: {palette['surface2']};
+        border: 1px solid {palette['input_border']};
+        border-radius: 6px;
+        text-align: center;
+        color: {palette['text']};
+        min-height: 14px;
+    }}
+    QProgressBar::chunk {{
+        background: {palette['accent']};
+        border-radius: 5px;
+    }}
+    QFrame[frameShape="4"], QFrame[frameShape="5"] {{
+        background: {palette['surface3']};
+        border: none;
+        max-height: 1px;
+        max-width: 1px;
+    }}
+    QSplitter::handle {{
+        background: {palette['surface3']};
     }}
     """
